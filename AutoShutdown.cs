@@ -25,6 +25,7 @@ public class AutoShutdown
             Name = room.Name,
             Room = room.Id
         });
+        var lessons = await Api.GetLessonsAsync(room.Id);
     }
 
     public async Task StopAsync()

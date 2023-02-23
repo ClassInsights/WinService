@@ -20,6 +20,12 @@ public class Api
         return JsonConvert.DeserializeObject<DbModels.TabRooms>(response) ?? new DbModels.TabRooms();
     }
 
+    public async Task<List<DbModels.TabLessons>> GetLessonsAsync(int room)
+    {
+        var response = await SendRequestAsync("Lessons", query: $"roomId={room}", requestMethod: RequestMethod.Get);
+        return JsonConvert.DeserializeObject<List<DbModels.TabLessons>>(response) ?? new List<DbModels.TabLessons>();
+    }
+
     public async Task<DbModels.TabComputers> UpdateComputer(RequestModels.ComputerRequest request)
     {
         var response = await SendRequestAsync("Computer", JsonConvert.SerializeObject(request),
