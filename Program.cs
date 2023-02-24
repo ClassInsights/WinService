@@ -8,4 +8,4 @@ if (!Environment.UserInteractive && RuntimeInformation.IsOSPlatform(OSPlatform.W
     Host.CreateDefaultBuilder(args)
         .ConfigureServices((_, services) => { services.AddHostedService<Service>(); })
         .UseWindowsService(options => { options.ServiceName = "AutoShutdown"; }).Build().Run();
-else new AutoShutdown().RunAsync().GetAwaiter().GetResult();
+else new AutoShutdown().RunAsync(new CancellationToken()).GetAwaiter().GetResult();

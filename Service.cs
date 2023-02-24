@@ -19,7 +19,7 @@ public class Service : BackgroundService
         try
         {
             _shutdown = new AutoShutdown();
-            await _shutdown.RunAsync();
+            await _shutdown.RunAsync(stoppingToken);
         }
         catch (Exception ex)
         {
@@ -27,7 +27,7 @@ public class Service : BackgroundService
         }
     }
 
-    public override async Task StopAsync(CancellationToken cancellationToken)
+/*    public override async Task StopAsync(CancellationToken cancellationToken)
     {
         try
         {
@@ -37,5 +37,5 @@ public class Service : BackgroundService
         {
             _logger.LogCritical(ex, "{Message}", ex.Message);
         }
-    }
+    }*/
 }
