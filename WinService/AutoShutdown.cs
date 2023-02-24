@@ -17,7 +17,8 @@ public class AutoShutdown
 
     public async Task RunAsync(CancellationToken token)
     {
-        _room = await _api.GetRoomAsync("DV4");
+        var pc = Environment.MachineName;
+        _room = await _api.GetRoomAsync("DV2");
         StartHeartbeatTimer(token);
 
         _lessons = await _api.GetLessonsAsync(_room.Id);
