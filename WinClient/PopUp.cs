@@ -7,6 +7,7 @@ namespace WinClient
         public PopUp()
         {
             InitializeComponent();
+            this.Icon = SystemIcons.Error;
         }
 
         // Disable Close Button
