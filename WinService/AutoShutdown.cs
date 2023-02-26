@@ -9,8 +9,8 @@ public class AutoShutdown
     private readonly Api _api;
     private List<DbModels.TabLessons> _lessons = new ();
     private DbModels.TabRooms _room = new();
-    private const int BufferMinutes = 10;
-    private const int DelayNoLessons = 50;
+    private const int BufferMinutes = 20; // time where no lessons should be
+    private const int NoLessonsUseTime = 50; // time how long pc should be usable after all lessons
 
     public AutoShutdown()
     {
@@ -19,13 +19,12 @@ public class AutoShutdown
 
     public async Task RunAsync(CancellationToken token)
     {
-        /*var pc = Environment.MachineName;
+        var pc = Environment.MachineName;
         _room = await _api.GetRoomAsync("DV2");
         StartHeartbeatTimer(token);
 
         _lessons = await _api.GetLessonsAsync(_room.Id);
-        await CheckShutdownLoopAsync(token);*/
-        await SendShutdownAsync(token);
+        await CheckShutdownLoopAsync(token);
         await Task.Delay(-1, token);
     }
 
@@ -60,24 +59,55 @@ public class AutoShutdown
         {
             while (!token.IsCancellationRequested)
             {
-                var delay = CheckNextShutdown();
+                try
+                {
+                    var delay = await WaitLessonEnd(); //Todo: If all lessons are over, add one "lesson" from now with NoLessonsUseTime 
 
-                if (delay.TotalMinutes > BufferMinutes) await Task.Delay(delay, token);
-                else await SendShutdownAsync(token);
+                    if (delay["startTime"].TotalMinutes > BufferMinutes) await SendShutdownAsync(token); // if lessons start takes longer than buffer => send shutdown
+                    else await Task.Delay(delay["endTime"], token); // else wait until lesson end
+                }
+                catch (NoLessonsException)
+                {
+                    _lessons.Add(new DbModels.TabLessons()
+                    {
+                        StartTime = DateTime.Now,
+                        EndTime = DateTime.Now.AddMinutes(1),
+                    });
+                }
             }
         }, token);
     }
 
-    private TimeSpan CheckNextShutdown()
+    private async Task<Dictionary<string, TimeSpan>> WaitLessonEnd()
     {
-        if (_lessons.Count == 0) return TimeSpan.FromMinutes(DelayNoLessons);
+        while (true)
+        {
+            if (_lessons.Count == 0) throw new NoLessonsException();
 
-        var lessonsTimes = _lessons.Select(x => x.EndTime.TimeOfDay).ToList();
-        var closestTime = lessonsTimes.MinBy(t => Math.Abs((t - DateTime.Now.TimeOfDay).Ticks));
+            var endTimes = _lessons.Select(x => x.EndTime.TimeOfDay).ToList();
+            var startTimes = _lessons.Select(x => x.StartTime.TimeOfDay).ToList();
 
-        if (DateTime.Now.TimeOfDay > closestTime) closestTime = DateTime.Now.TimeOfDay.Add(TimeSpan.FromMinutes(DelayNoLessons));
+            var closestEndTime = GetNearestTime(endTimes);
+            var closestStartTime = GetNearestTime(startTimes);
 
-        return closestTime - DateTime.Now.TimeOfDay;
+            // if closest endTime is in past => all lessons are over so we use the default delay from NoLessonsUseTime
+            // if (closestEndTime.TotalMilliseconds < 0) closestEndTime = TimeSpan.FromMinutes(NoLessonsUseTime);
+            // if (closestStartTime.TotalMilliseconds < 0) closestStartTime = TimeSpan.Zero;
+
+            if (closestEndTime > closestStartTime) 
+                return new Dictionary<string, TimeSpan>
+                {
+                    ["startTime"] = closestStartTime,
+                    ["endTime"] = closestEndTime
+                };
+            await Task.Delay(closestEndTime); // wait for lessons end, if end is before next lesson start
+        }
+    }
+
+    private TimeSpan GetNearestTime(IEnumerable<TimeSpan> times)
+    {
+        var closestTime = times.MinBy(t => Math.Abs((t - DateTime.Now.TimeOfDay).Ticks));
+        return closestTime - DateTime.Now.TimeOfDay; 
     }
 
     private async Task SendShutdownAsync(CancellationToken token)
@@ -103,4 +133,6 @@ public class AutoShutdown
         var collection = searcher.Get();
         return collection.Cast<ManagementBaseObject>().First()["UserName"] as string;
     }
+
+    public class NoLessonsException : Exception {}
 }
