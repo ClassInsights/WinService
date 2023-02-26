@@ -68,6 +68,7 @@
             this.btnYes.TabIndex = 3;
             this.btnYes.Text = "Ja";
             this.btnYes.UseVisualStyleBackColor = false;
+            this.btnYes.Click += new System.EventHandler(this.BtnYesClick);
             // 
             // btnNo
             // 
@@ -81,7 +82,7 @@
             this.btnNo.TabIndex = 2;
             this.btnNo.Text = "Nein";
             this.btnNo.UseVisualStyleBackColor = false;
-            this.btnNo.Click += new System.EventHandler(this.btnNo_Click);
+            this.btnNo.Click += new System.EventHandler(this.BtnNoClick);
             // 
             // panelTitle
             // 
@@ -171,7 +172,7 @@
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Automatischer Shutdown";
             this.TopMost = true;
-            this.Shown += new System.EventHandler(this.PopUp_Shown);
+            this.Shown += new System.EventHandler(this.PopUpShown);
             this.panelBG.ResumeLayout(false);
             this.panelTitle.ResumeLayout(false);
             this.panelContent.ResumeLayout(false);
