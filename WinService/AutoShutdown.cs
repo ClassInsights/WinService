@@ -1,4 +1,6 @@
 ﻿using WinService.Models;
+using System.Management;
+using System.Diagnostics;
 
 namespace WinService;
 
@@ -17,12 +19,13 @@ public class AutoShutdown
 
     public async Task RunAsync(CancellationToken token)
     {
-        var pc = Environment.MachineName;
+        /*var pc = Environment.MachineName;
         _room = await _api.GetRoomAsync("DV2");
         StartHeartbeatTimer(token);
 
         _lessons = await _api.GetLessonsAsync(_room.Id);
-        await CheckShutdownLoopAsync(token);
+        await CheckShutdownLoopAsync(token);*/
+        await SendShutdownAsync(token);
         await Task.Delay(-1, token);
     }
 
@@ -60,7 +63,7 @@ public class AutoShutdown
                 var delay = CheckNextShutdown();
 
                 if (delay.TotalMinutes > BufferMinutes) await Task.Delay(delay, token);
-                else await SendShutdownAsync();
+                else await SendShutdownAsync(token);
             }
         }, token);
     }
@@ -77,8 +80,27 @@ public class AutoShutdown
         return closestTime - DateTime.Now.TimeOfDay;
     }
 
-    private async Task SendShutdownAsync()
+    private async Task SendShutdownAsync(CancellationToken token)
     {
-        await Task.Run(() => {});
+        var username = GetLoggedInUsername();
+        if (username is null) // shutdown pc if no user is logged in
+        {
+            Process.Start("shutdown", "/s");
+            return;
+        }
+
+        if (username.Contains('\\')) username = username.Split("\\")[1];
+
+        var pipeName = $"AutoShutdown-{username}";
+        await PipeClient.SendShutdown(pipeName, token);
+    }
+
+    // https://stackoverflow.com/a/7186755
+    private static string? GetLoggedInUsername()
+    {
+        if (!OperatingSystem.IsWindows()) throw new NotImplementedException();
+        var searcher = new ManagementObjectSearcher("SELECT UserName FROM Win32_ComputerSystem");
+        var collection = searcher.Get();
+        return collection.Cast<ManagementBaseObject>().First()["UserName"] as string;
     }
 }
