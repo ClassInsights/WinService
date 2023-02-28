@@ -57,18 +57,19 @@ public class AutoShutdown
     {
         await Task.Run(async () =>
         {
+            await Task.Delay(600000, token); // wait 10 Minutes for User to sign in and so on ...
             while (!token.IsCancellationRequested)
             {
                 try
                 {
                     var delay = await WaitLessonEnd();
 
-                    if (delay["startTime"].TotalMinutes > BufferMinutes) await SendShutdownAsync(token); // if lessons start takes longer than buffer => send shutdown
+                    if (delay["startTime"].TotalMinutes > BufferMinutes || (delay["startTime"].TotalMilliseconds < 0 && delay["endTime"].TotalMilliseconds < 0)) await SendShutdownAsync(token); // if lessons start takes longer than buffer or all lessons are over => send shutdown
                     await Task.Delay((int) Math.Max(delay["endTime"].TotalMilliseconds, NoLessonsUseTime), token); // wait until lesson end, if all lessons are over wait for NoLessonsUseTime
                 }
                 catch (NoLessonsException)
                 {
-                    _lessons.Add(new DbModels.TabLessons()
+                    _lessons.Add(new DbModels.TabLessons
                     {
                         StartTime = DateTime.Now,
                         EndTime = DateTime.Now.AddMinutes(1),
@@ -96,13 +97,15 @@ public class AutoShutdown
                     ["startTime"] = closestStartTime,
                     ["endTime"] = closestEndTime
                 };
-            await Task.Delay(closestEndTime); // wait for lessons end, if end is before next lesson start
+            await Task.Delay((int) Math.Max(closestEndTime.TotalMilliseconds, 0)); // wait for lessons end, if end is before next lesson start
         }
     }
 
+    // https://stackoverflow.com/a/1757221
     private TimeSpan GetNearestTime(IEnumerable<TimeSpan> times)
     {
-        var closestTime = times.MinBy(t => Math.Abs((t - DateTime.Now.TimeOfDay).Ticks));
+        var timesFuture = times.Where(t => (t - DateTime.Now.TimeOfDay).TotalMilliseconds > 0).ToList();
+        var closestTime = timesFuture.MinBy(t => Math.Abs((t - DateTime.Now.TimeOfDay).Ticks));
         return closestTime - DateTime.Now.TimeOfDay; 
     }
 
