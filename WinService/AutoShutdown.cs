@@ -61,10 +61,10 @@ public class AutoShutdown
             {
                 try
                 {
-                    var delay = await WaitLessonEnd(); //Todo: If all lessons are over, add one "lesson" from now with NoLessonsUseTime 
+                    var delay = await WaitLessonEnd();
 
                     if (delay["startTime"].TotalMinutes > BufferMinutes) await SendShutdownAsync(token); // if lessons start takes longer than buffer => send shutdown
-                    else await Task.Delay(delay["endTime"], token); // else wait until lesson end
+                    await Task.Delay((int) Math.Max(delay["endTime"].TotalMilliseconds, NoLessonsUseTime), token); // wait until lesson end, if all lessons are over wait for NoLessonsUseTime
                 }
                 catch (NoLessonsException)
                 {
@@ -89,11 +89,7 @@ public class AutoShutdown
 
             var closestEndTime = GetNearestTime(endTimes);
             var closestStartTime = GetNearestTime(startTimes);
-
-            // if closest endTime is in past => all lessons are over so we use the default delay from NoLessonsUseTime
-            // if (closestEndTime.TotalMilliseconds < 0) closestEndTime = TimeSpan.FromMinutes(NoLessonsUseTime);
-            // if (closestStartTime.TotalMilliseconds < 0) closestStartTime = TimeSpan.Zero;
-
+            
             if (closestEndTime > closestStartTime) 
                 return new Dictionary<string, TimeSpan>
                 {
