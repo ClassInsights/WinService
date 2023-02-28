@@ -57,7 +57,7 @@ public class AutoShutdown
     {
         await Task.Run(async () =>
         {
-            await Task.Delay(600000, token); // wait 10 Minutes for User to sign in and so on ...
+            await Task.Delay(300000, token); // wait 5 Minutes for User to sign in and so on ...
             while (!token.IsCancellationRequested)
             {
                 try
