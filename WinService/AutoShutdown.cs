@@ -85,8 +85,8 @@ public class AutoShutdown
         {
             if (_lessons.Count == 0) throw new NoLessonsException();
 
-            var endTimes = _lessons.Select(x => x.EndTime.TimeOfDay).ToList();
-            var startTimes = _lessons.Select(x => x.StartTime.TimeOfDay).ToList();
+            var endTimes = _lessons.Select(x => x.EndTime.TimeOfDay).Distinct().ToList();
+            var startTimes = _lessons.Select(x => x.StartTime.TimeOfDay).Distinct().ToList();
 
             var closestEndTime = GetNearestTime(endTimes);
             var closestStartTime = GetNearestTime(startTimes);
