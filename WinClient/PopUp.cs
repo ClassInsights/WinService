@@ -52,7 +52,7 @@ public partial class PopUp : Form
 
                 if (line is "shutdown")
                 {
-                    Process.Start("shutdown", "/s /t 300");
+                    Process.Start("shutdown", "/s /f /t 300");
                     _allowVisible = true;
                     Show();
                     await writer.WriteLineAsync("OK");
@@ -79,6 +79,6 @@ public partial class PopUp : Form
 
     private void BtnYesClick(object sender, EventArgs e)
     {
-        Process.Start("shutdown", "/s");
+        Process.Start("shutdown", "/s /f /t 0");
     }
 }
