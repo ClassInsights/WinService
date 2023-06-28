@@ -1,6 +1,6 @@
-﻿using WinService.Models;
+﻿using System.Diagnostics;
 using System.Management;
-using System.Diagnostics;
+using WinService.Models;
 
 namespace WinService;
 
@@ -9,12 +9,13 @@ public class AutoShutdown
     private readonly Api _api;
     private List<DbModels.TabLessons> _lessons = new ();
     private DbModels.TabRooms _room = new();
-    private const int BufferMinutes = 20; // time where no lessons should be
-    private const int NoLessonsUseTime = 50; // time how long pc should be usable after all lessons
+    private const int BufferMinutes = 20; // time until no lessons should be to shutdown
+    private const int NoLessonsUseTime = 50; // time how long pc should be usable after all lessons and max delay when recheck for lesson should be
 
     public AutoShutdown()
     {
         _api = new Api();
+        Logger.Log("Init AutoShutdown");
     }
 
     public async Task RunAsync(CancellationToken token)
@@ -24,6 +25,7 @@ public class AutoShutdown
         StartHeartbeatTimer(token);
 
         _lessons = await _api.GetLessonsAsync(_room.Id);
+
         await CheckShutdownLoopAsync(token);
         await Task.Delay(-1, token);
     }
@@ -40,81 +42,126 @@ public class AutoShutdown
 
     private async void SendHeartbeats(CancellationToken token)
     {
-        while (!token.IsCancellationRequested)
+        try
         {
-            var rnd = new Random();
-            await _api.UpdateComputer(new RequestModels.ComputerRequest
+            while (!token.IsCancellationRequested)
             {
-                LastSeen = DateTime.Now,
-                Name = _room.Name,
-                Room = _room.Id
-            });
-            token.WaitHandle.WaitOne(TimeSpan.FromSeconds(rnd.Next(20, 60)));
+                await _api.UpdateComputer(new RequestModels.ComputerRequest
+                {
+                    LastSeen = DateTime.Now,
+                    Name = _room.Name,
+                    Room = _room.Id
+                });
+                token.WaitHandle.WaitOne(TimeSpan.FromSeconds(new Random().Next(20, 60)));
+            }
+        }
+        catch (Exception e)
+        {
+            Logger.Error($"Heartbeat failed with error: {e.Message}");
         }
     }
 
+    /// <summary>
+    /// Checks if shutdown is ready and sends shutdown to client
+    /// </summary>
+    /// <param name="token"></param>
+    /// <returns></returns>
     private async Task CheckShutdownLoopAsync(CancellationToken token)
     {
         await Task.Run(async () =>
         {
-            await Task.Delay(300000, token); // wait 5 Minutes for User to sign in and so on ...
+            await Task.Delay(60000, token); // wait 1 Minute for User to sign in and so on ...
             while (!token.IsCancellationRequested)
             {
                 try
                 {
-                    var delay = await WaitLessonEnd();
+                    // wait until current lesson is over
+                    var lessonEnd = GetNextLessonInfo()["endTime"];
+                    Logger.Log($"Wait {lessonEnd / 1000}s for lesson end!");
+                    await Task.Delay(lessonEnd, token);
 
-                    if (delay["startTime"].TotalMinutes > BufferMinutes || (delay["startTime"].TotalMilliseconds < 0 && delay["endTime"].TotalMilliseconds < 0)) await SendShutdownAsync(token); // if lessons start takes longer than buffer or all lessons are over => send shutdown
-                    await Task.Delay((int) Math.Max(delay["endTime"].TotalMilliseconds, NoLessonsUseTime), token); // wait until lesson end, if all lessons are over wait for NoLessonsUseTime
-                }
-                catch (NoLessonsException)
-                {
-                    _lessons.Add(new DbModels.TabLessons
+                    // get lesson infos (startTime, endTime) again after lesson is over
+                    var delay = GetNextLessonInfo();
+
+                    // if lessonStart takes longer than buffer or lessonStart is in past, send shutdown
+                    if (delay["startTime"] / 60000 > BufferMinutes || delay["startTime"] <= 0)
                     {
-                        StartTime = DateTime.Now,
-                        EndTime = DateTime.Now.AddMinutes(1),
-                    });
+                        await SendShutdownAsync(token);
+                        continue; // skip waiting for next lesson, otherwise service could wait long hours if user aborts shutdown (service will now wait for lessonEnd OR NoLessonsUseTime)
+                    }
+
+                    var lessonStart = Math.Min(delay["startTime"], NoLessonsUseTime * 60000);
+                    Logger.Log($"Wait {lessonStart / 1000}s for next lesson to start!");
+
+                    // wait until next lesson starts (max duration is NoLessonUseTime)
+                    await Task.Delay(lessonStart, token);
+                }
+                catch (Exception e)
+                {
+                    Logger.Error($"Unhandled {e.GetType()}, Message: {e.Message}, Stacktrace : {e.StackTrace}");
                 }
             }
         }, token);
     }
 
-    private async Task<Dictionary<string, TimeSpan>> WaitLessonEnd()
+    /// <summary>
+    /// Get information about start and end time of <value>_lessons</value>
+    /// </summary>
+    /// <returns>
+    /// <br>A Dictionary where <value>endTime</value> contains the duration until the current lesson ends and where <value>startTime</value> contains the duration until next lesson starts.</br>
+    /// <br>Note that <value>endTime</value> will be set <value>NoLessonsUseTime</value> minutes if all lessons are over</br>
+    /// <br>endTime has a maximum of <value>NoLessonsUseTime</value></br>
+    /// </returns>
+    private Dictionary<string, int> GetNextLessonInfo()
     {
-        while (true)
+        var endTimes = _lessons.Select(x => x.EndTime.TimeOfDay).Distinct().ToList();
+        var startTimes = _lessons.Select(x => x.StartTime.TimeOfDay).Distinct().ToList();
+
+        var closestStartTime = GetNearestTime(startTimes);
+        var closestEndTime = GetNearestTime(endTimes);
+
+        Logger.Debug($"ClosestStartTime: {closestStartTime.TotalSeconds}s");
+        Logger.Debug($"ClosestEndTime: {closestEndTime.TotalSeconds}s");
+
+        return new Dictionary<string, int>
         {
-            if (_lessons.Count == 0) throw new NoLessonsException();
-
-            var endTimes = _lessons.Select(x => x.EndTime.TimeOfDay).Distinct().ToList();
-            var startTimes = _lessons.Select(x => x.StartTime.TimeOfDay).Distinct().ToList();
-
-            var closestEndTime = GetNearestTime(endTimes);
-            var closestStartTime = GetNearestTime(startTimes);
-            
-            if (closestEndTime > closestStartTime) 
-                return new Dictionary<string, TimeSpan>
-                {
-                    ["startTime"] = closestStartTime,
-                    ["endTime"] = closestEndTime
-                };
-            await Task.Delay((int) Math.Max(closestEndTime.TotalMilliseconds, 0)); // wait for lessons end, if end is before next lesson start
-        }
+            ["startTime"] = (int) closestStartTime.TotalMilliseconds,
+            ["endTime"] = (int) Math.Clamp(closestEndTime.TotalMilliseconds, 60000, NoLessonsUseTime * 60000) // wait for a maximum of NoLessonsUseTime for recheck (prevent infinity waiting after user aborts shutdown)
+        };
     }
 
     // https://stackoverflow.com/a/1757221
-    private TimeSpan GetNearestTime(IEnumerable<TimeSpan> times)
+    /// <summary>
+    /// Get nearest time of list.
+    /// </summary>
+    /// <param name="times">IEnumerable from which the nearest time should be returned</param>
+    /// <param name="date">TimeSpan from where the nearest time should be calculated</param>
+    /// <returns>
+    /// Returns TimeSpan which represents the time until the nearest time in IEnumerable <value>times</value>
+    /// </returns>
+    private static TimeSpan GetNearestTime(IEnumerable<TimeSpan> times, TimeSpan? date = null)
     {
-        var timesFuture = times.Where(t => (t - DateTime.Now.TimeOfDay).TotalMilliseconds > 0).ToList();
-        var closestTime = timesFuture.MinBy(t => Math.Abs((t - DateTime.Now.TimeOfDay).Ticks));
+        var d = date ?? DateTime.Now.TimeOfDay;
+
+        var timesFuture = times.Where(t => (t - d).TotalMilliseconds > 0).ToList();
+        if (!timesFuture.Any()) return TimeSpan.Zero;
+
+        var closestTime = timesFuture.MinBy(t => Math.Abs((t - d).Ticks));
         return closestTime - DateTime.Now.TimeOfDay; 
     }
 
-    private async Task SendShutdownAsync(CancellationToken token)
+    /// <summary>
+    /// Sends shutdown to client via pipe
+    /// </summary>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private static async Task SendShutdownAsync(CancellationToken token)
     {
+        Logger.Log("Send shutdown to client!");
         var username = GetLoggedInUsername();
-        if (username is null) // shutdown pc if no user is logged in
+        if (username is null) // shutdown pc immediately if no user is logged in
         {
-            Process.Start("shutdown", "/s");
+            Process.Start("shutdown", "/s /f /t 0");
             return;
         }
 
@@ -132,6 +179,4 @@ public class AutoShutdown
         var collection = searcher.Get();
         return collection.Cast<ManagementBaseObject>().First()["UserName"] as string;
     }
-
-    public class NoLessonsException : Exception {}
 }
