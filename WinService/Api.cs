@@ -30,7 +30,7 @@ public class Api
         return JsonConvert.DeserializeObject<List<DbModels.TabLessons>>(response) ?? new List<DbModels.TabLessons>();
     }
 
-    public async Task<DbModels.TabComputers> UpdateComputer(RequestModels.ComputerRequest request)
+    public async Task<DbModels.TabComputers> UpdateComputer(DbModels.TabComputers request)
     {
         var response = await SendRequestAsync("Computer", JsonConvert.SerializeObject(request),
             requestMethod: RequestMethod.Post);

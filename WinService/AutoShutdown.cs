@@ -1,5 +1,8 @@
 ﻿using System.Diagnostics;
 using System.Management;
+using System.Net;
+using System.Net.NetworkInformation;
+using System.Net.Sockets;
 using WinService.Models;
 
 namespace WinService;
@@ -46,11 +49,13 @@ public class AutoShutdown
         {
             while (!token.IsCancellationRequested)
             {
-                await _api.UpdateComputer(new RequestModels.ComputerRequest
+                await _api.UpdateComputer(new DbModels.TabComputers
                 {
                     LastSeen = DateTime.Now,
                     Name = _room.Name,
-                    Room = _room.Id
+                    Room = _room.Id,
+                    Mac = GetMacAddress(),
+                    Ip = GetLocalIpAddress()
                 });
                 token.WaitHandle.WaitOne(TimeSpan.FromSeconds(new Random().Next(20, 60)));
             }
@@ -59,6 +64,30 @@ public class AutoShutdown
         {
             Logger.Error($"Heartbeat failed with error: {e.Message}");
         }
+    }
+
+    // https://stackoverflow.com/a/6803109/16871250
+    private static string GetLocalIpAddress()
+    {
+        var host = Dns.GetHostEntry(Dns.GetHostName());
+        foreach (var ip in host.AddressList)
+        {
+            if (ip.AddressFamily == AddressFamily.InterNetwork)
+            {
+                return ip.ToString();
+            }
+        }
+        throw new Exception("No network adapters with an IPv4 address in the system!");
+    }
+
+    // https://stackoverflow.com/a/7661829/16871250
+    private static string GetMacAddress()
+    {
+        return NetworkInterface
+            .GetAllNetworkInterfaces()
+            .Where(nic => nic.OperationalStatus == OperationalStatus.Up && nic.NetworkInterfaceType != NetworkInterfaceType.Loopback)
+            .Select(nic => nic.GetPhysicalAddress().ToString())
+            .FirstOrDefault() ?? string.Empty;
     }
 
     /// <summary>
