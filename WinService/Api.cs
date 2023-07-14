@@ -13,9 +13,9 @@ namespace WinService;
 public class Api
 {
 #if DEBUG
-    private const string BaseUrl = "https://localhost:7061/api/";
+    public const string BaseUrl = "https://localhost:7061/api/";
 #else
-    private const string BaseUrl = "http://192.168.3.5/api/";
+    public const string BaseUrl = "https://srv-iis.projekt.lokal/api/";
 #endif
 
     public async Task<DbModels.TabRooms> GetRoomAsync(string name)
