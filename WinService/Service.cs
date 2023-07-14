@@ -27,15 +27,16 @@ public class Service : BackgroundService
         }
     }
 
-/*    public override async Task StopAsync(CancellationToken cancellationToken)
+    public override async Task StopAsync(CancellationToken cancellationToken)
     {
         try
         {
-            if (_shutdown is not null) await _shutdown.StopAsync();
+            if (_shutdown is not null)
+                await _shutdown.StopAsync();
         }
         catch (Exception ex)
         {
             _logger.LogCritical(ex, "{Message}", ex.Message);
         }
-    }*/
+    }
 }

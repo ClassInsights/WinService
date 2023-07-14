@@ -27,11 +27,18 @@ public class AutoShutdown
         var pc = "DV2" /*Environment.MachineName*/;
         _room = await _api.GetRoomAsync(pc);
         StartHeartbeatTimer(token);
+        
+        await _wsManager.Start("wss://srv-iis.projekt.lokal/ws/pc");
 
         _lessons = await _api.GetLessonsAsync(_room.Id);
 
         await CheckShutdownLoopAsync(token);
         await Task.Delay(-1, token);
+    }
+
+    public async Task StopAsync()
+    {
+        await _wsManager.Stop();
     }
 
     private void StartHeartbeatTimer(CancellationToken token)
