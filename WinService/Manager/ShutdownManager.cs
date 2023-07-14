@@ -57,7 +57,10 @@ public class ShutdownManager
                     {
                         // if pc isn't awake at least 5 minutes, then always wait at least NoLessonsUseTime before shutdown
                         if ((DateTime.Now - loopStart).TotalMinutes < 5)
+                        {
                             await Task.Delay(NoLessonsUseTime * 60000, token);
+                            continue; // check again if any lesson is near
+                        }
 
                         await SendShutdownAsync(token);
                         loopStart = DateTime.Now; // reset loopStart after shutdown sent, that if users aborts after all lessons it'll wait again for NoLessonsUseTime
