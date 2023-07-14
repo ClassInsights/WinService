@@ -12,6 +12,7 @@ public class AutoShutdown
     private readonly Api _api;
     private List<DbModels.TabLessons> _lessons = new ();
     private DbModels.TabRooms _room = new();
+    private readonly WsManager _wsManager = new ();
     private const int BufferMinutes = 20; // time until no lessons should be to shutdown
     private const int NoLessonsUseTime = 50; // time how long pc should be usable after all lessons and max delay when recheck for lesson should be
 
@@ -23,8 +24,8 @@ public class AutoShutdown
 
     public async Task RunAsync(CancellationToken token)
     {
-        var pc = Environment.MachineName;
-        _room = await _api.GetRoomAsync("DV2");
+        var pc = "DV2" /*Environment.MachineName*/;
+        _room = await _api.GetRoomAsync(pc);
         StartHeartbeatTimer(token);
 
         _lessons = await _api.GetLessonsAsync(_room.Id);
@@ -100,6 +101,8 @@ public class AutoShutdown
         await Task.Run(async () =>
         {
             await Task.Delay(60000, token); // wait 1 Minute for User to sign in and so on ...
+            
+            var loopStart = DateTime.Now;
             while (!token.IsCancellationRequested)
             {
                 try
@@ -115,7 +118,12 @@ public class AutoShutdown
                     // if lessonStart takes longer than buffer or lessonStart is in past, send shutdown
                     if (delay["startTime"] / 60000 > BufferMinutes || delay["startTime"] <= 0)
                     {
+                        // if pc isn't awake at least 5 minutes, then always wait at least NoLessonsUseTime before shutdown
+                        if ((DateTime.Now - loopStart).TotalMinutes < 5)
+                            await Task.Delay(NoLessonsUseTime * 60000, token);
+
                         await SendShutdownAsync(token);
+                        loopStart = DateTime.Now; // reset loopStart after shutdown sent, that if users aborts after all lessons it'll wait again for NoLessonsUseTime
                         continue; // skip waiting for next lesson, otherwise service could wait long hours if user aborts shutdown (service will now wait for lessonEnd OR NoLessonsUseTime)
                     }
 
