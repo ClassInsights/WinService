@@ -1,107 +1,32 @@
-﻿using System.Diagnostics;
+﻿using Newtonsoft.Json.Linq;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
 using System.Management;
-using System.Net;
-using System.Net.NetworkInformation;
-using System.Net.Sockets;
+using System.Text;
+using System.Threading.Tasks;
 using WinService.Models;
 
-namespace WinService;
+namespace WinService.Manager;
 
-public class AutoShutdown
+public class ShutdownManager
 {
-    private readonly Api _api;
-    private List<DbModels.TabLessons> _lessons = new ();
-    private DbModels.TabRooms _room = new();
-    private readonly WsManager _wsManager = new ();
+    private readonly WinService _winService;
     private const int BufferMinutes = 20; // time until no lessons should be to shutdown
     private const int NoLessonsUseTime = 50; // time how long pc should be usable after all lessons and max delay when recheck for lesson should be
+    private List<DbModels.TabLessons> _lessons = new();
 
-    public AutoShutdown()
+
+    public ShutdownManager(WinService winService)
     {
-        _api = new Api();
-        Logger.Log("Init AutoShutdown");
+        _winService = winService;
     }
 
-    public async Task RunAsync(CancellationToken token)
+    public async Task Start(CancellationToken token)
     {
-        var pc = "DV2" /*Environment.MachineName*/;
-        _room = await _api.GetRoomAsync(pc);
-        try
-        {
-            StartHeartbeatTimer(token);
-            await _wsManager.Start("wss://srv-iis.projekt.lokal/ws/pc");
-
-            _lessons = await _api.GetLessonsAsync(_room.Id);
-
-            await CheckShutdownLoopAsync(token);
-        }
-        catch (OperationCanceledException)
-        {
-            Logger.Log("Tasks canceled!");
-        }
-        await Task.Delay(-1, token);
-    }
-
-    public async Task StopAsync()
-    {
-        await _wsManager.Stop();
-    }
-
-    private void StartHeartbeatTimer(CancellationToken token)
-    {
-        var timer = new System.Timers.Timer
-        {
-            Interval = new Random().Next(20, 60) * 1000,
-        };
-        timer.Elapsed += (_, _) => SendHeartbeats(token);
-        timer.Start();
-    }
-
-    private async void SendHeartbeats(CancellationToken token)
-    {
-        try
-        {
-            while (!token.IsCancellationRequested)
-            {
-                await _api.UpdateComputer(new DbModels.TabComputers
-                {
-                    LastSeen = DateTime.Now,
-                    Name = _room.Name,
-                    Room = _room.Id,
-                    Mac = GetMacAddress(),
-                    Ip = GetLocalIpAddress()
-                });
-                token.WaitHandle.WaitOne(TimeSpan.FromSeconds(new Random().Next(20, 60)));
-            }
-        }
-        catch (Exception e)
-        {
-            Logger.Error($"Heartbeat failed with error: {e.Message}");
-        }
-    }
-
-    // https://stackoverflow.com/a/6803109/16871250
-    private static string GetLocalIpAddress()
-    {
-        var host = Dns.GetHostEntry(Dns.GetHostName());
-        foreach (var ip in host.AddressList)
-        {
-            if (ip.AddressFamily == AddressFamily.InterNetwork)
-            {
-                return ip.ToString();
-            }
-        }
-        throw new Exception("No network adapters with an IPv4 address in the system!");
-    }
-
-    // https://stackoverflow.com/a/7661829/16871250
-    private static string GetMacAddress()
-    {
-        return NetworkInterface
-            .GetAllNetworkInterfaces()
-            .Where(nic => nic.OperationalStatus == OperationalStatus.Up && nic.NetworkInterfaceType != NetworkInterfaceType.Loopback)
-            .Select(nic => nic.GetPhysicalAddress().ToString())
-            .FirstOrDefault() ?? string.Empty;
+        _lessons = await Api.GetLessonsAsync(_winService.Room.Id);
+        CheckShutdownLoop(token);
     }
 
     /// <summary>
@@ -109,12 +34,12 @@ public class AutoShutdown
     /// </summary>
     /// <param name="token"></param>
     /// <returns></returns>
-    private async Task CheckShutdownLoopAsync(CancellationToken token)
+    private void CheckShutdownLoop(CancellationToken token)
     {
-        await Task.Run(async () =>
+        _ = Task.Run(async () =>
         {
             await Task.Delay(60000, token); // wait 1 Minute for User to sign in and so on ...
-            
+
             var loopStart = DateTime.Now;
             while (!token.IsCancellationRequested)
             {
@@ -152,6 +77,7 @@ public class AutoShutdown
         }, token);
     }
 
+
     /// <summary>
     /// Get information about start and end time of <value>_lessons</value>
     /// </summary>
@@ -170,10 +96,11 @@ public class AutoShutdown
 
         return new Dictionary<string, int>
         {
-            ["startTime"] = (int) closestStartTime.TotalMilliseconds,
-            ["endTime"] = (int) Math.Clamp(closestEndTime.TotalMilliseconds, 60000, NoLessonsUseTime * 60000) // wait for a maximum of NoLessonsUseTime for recheck (prevent infinity waiting after user aborts shutdown)
+            ["startTime"] = (int)closestStartTime.TotalMilliseconds,
+            ["endTime"] = (int)Math.Clamp(closestEndTime.TotalMilliseconds, 60000, NoLessonsUseTime * 60000) // wait for a maximum of NoLessonsUseTime for recheck (prevent infinity waiting after user aborts shutdown)
         };
     }
+
 
     // https://stackoverflow.com/a/1757221
     /// <summary>
@@ -192,11 +119,12 @@ public class AutoShutdown
         if (!timesFuture.Any()) return TimeSpan.Zero;
 
         var closestTime = timesFuture.MinBy(t => Math.Abs((t - d).Ticks));
-        return closestTime - DateTime.Now.TimeOfDay; 
+        return closestTime - DateTime.Now.TimeOfDay;
     }
 
     /// <summary>
     /// Sends shutdown to client via pipe
+    /// If no user is logged in it shuts down the pc immediately
     /// </summary>
     /// <param name="token"></param>
     /// <returns></returns>

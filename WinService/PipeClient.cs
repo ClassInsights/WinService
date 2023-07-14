@@ -19,13 +19,13 @@ public class PipeClient
         };
 
         var reader = new StreamReader(clientPipe);
-        var line = await reader.ReadLineAsync();
+        var line = await reader.ReadLineAsync(token);
 
         if (line != "AutoShutdown") throw new ApplicationException("Error");
 
         await writer.WriteLineAsync("shutdown");
 
-        line = await reader.ReadLineAsync();
+        line = await reader.ReadLineAsync(token);
         if (line is not "OK") throw new ApplicationException("Error");
 
         await writer.WriteLineAsync("BYE");

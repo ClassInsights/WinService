@@ -1,6 +1,6 @@
 ﻿using LibreHardwareMonitor.Hardware;
 
-namespace WinService;
+namespace WinService.Manager;
 
 public class EnergyManager : IDisposable
 {

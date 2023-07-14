@@ -18,26 +18,26 @@ public class Api
     public const string BaseUrl = "https://srv-iis.projekt.lokal/api/";
 #endif
 
-    public async Task<DbModels.TabRooms> GetRoomAsync(string name)
+    public static async Task<DbModels.TabRooms> GetRoomAsync(string name)
     {
         var response = await SendRequestAsync("Room", query: $"roomName={name}", requestMethod: RequestMethod.Get);
         return JsonConvert.DeserializeObject<DbModels.TabRooms>(response) ?? new DbModels.TabRooms();
     }
 
-    public async Task<List<DbModels.TabLessons>> GetLessonsAsync(int room)
+    public static async Task<List<DbModels.TabLessons>> GetLessonsAsync(int room)
     {
         var response = await SendRequestAsync("Lessons", query: $"roomId={room}", requestMethod: RequestMethod.Get);
         return JsonConvert.DeserializeObject<List<DbModels.TabLessons>>(response) ?? new List<DbModels.TabLessons>();
     }
 
-    public async Task<DbModels.TabComputers> UpdateComputer(DbModels.TabComputers request)
+    public static async Task<DbModels.TabComputers> UpdateComputer(DbModels.TabComputers request)
     {
         var response = await SendRequestAsync("Computer", JsonConvert.SerializeObject(request),
             requestMethod: RequestMethod.Post);
         return JsonConvert.DeserializeObject<DbModels.TabComputers>(response) ?? new DbModels.TabComputers();
     }
 
-    private async Task<string> SendRequestAsync(string endpoint, string body = "", string query = "", RequestMethod requestMethod = RequestMethod.Post)
+    private static async Task<string> SendRequestAsync(string endpoint, string body = "", string query = "", RequestMethod requestMethod = RequestMethod.Post)
     {
         using var client = new HttpClient();
         var content = new StringContent(body, Encoding.UTF8, "application/json");

@@ -4,7 +4,7 @@ using System.Text;
 using Newtonsoft.Json;
 using Timer = System.Timers.Timer;
 
-namespace WinService;
+namespace WinService.Manager;
 
 public class WsManager
 {

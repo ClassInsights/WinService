@@ -6,7 +6,7 @@ namespace WinService;
 public class Service : BackgroundService
 {
     private readonly ILogger<Service> _logger;
-    private AutoShutdown? _shutdown;
+    private WinService? _winService;
 
     public Service(ILogger<Service> logger)
     {
@@ -18,8 +18,8 @@ public class Service : BackgroundService
     {
         try
         {
-            _shutdown = new AutoShutdown();
-            await _shutdown.RunAsync(stoppingToken);
+            _winService = new WinService();
+            await _winService.RunAsync(stoppingToken);
         }
         catch (Exception ex)
         {
@@ -31,8 +31,8 @@ public class Service : BackgroundService
     {
         try
         {
-            if (_shutdown is not null)
-                await _shutdown.StopAsync();
+            if (_winService is not null)
+                await _winService.StopAsync();
         }
         catch (Exception ex)
         {
