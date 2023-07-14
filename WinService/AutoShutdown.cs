@@ -26,13 +26,19 @@ public class AutoShutdown
     {
         var pc = "DV2" /*Environment.MachineName*/;
         _room = await _api.GetRoomAsync(pc);
-        StartHeartbeatTimer(token);
-        
-        await _wsManager.Start("wss://srv-iis.projekt.lokal/ws/pc");
+        try
+        {
+            StartHeartbeatTimer(token);
+            await _wsManager.Start("wss://srv-iis.projekt.lokal/ws/pc");
 
-        _lessons = await _api.GetLessonsAsync(_room.Id);
+            _lessons = await _api.GetLessonsAsync(_room.Id);
 
-        await CheckShutdownLoopAsync(token);
+            await CheckShutdownLoopAsync(token);
+        }
+        catch (OperationCanceledException)
+        {
+            Logger.Log("Tasks canceled!");
+        }
         await Task.Delay(-1, token);
     }
 
@@ -116,7 +122,6 @@ public class AutoShutdown
                 {
                     // wait until current lesson is over
                     var lessonEnd = GetNextLessonInfo()["endTime"];
-                    Logger.Log($"Wait {lessonEnd / 1000}s for lesson end!");
                     await Task.Delay(lessonEnd, token);
 
                     // get lesson infos (startTime, endTime) again after lesson is over
@@ -135,7 +140,6 @@ public class AutoShutdown
                     }
 
                     var lessonStart = Math.Min(delay["startTime"], NoLessonsUseTime * 60000);
-                    Logger.Log($"Wait {lessonStart / 1000}s for next lesson to start!");
 
                     // wait until next lesson starts (max duration is NoLessonUseTime)
                     await Task.Delay(lessonStart, token);
@@ -163,9 +167,6 @@ public class AutoShutdown
 
         var closestStartTime = GetNearestTime(startTimes);
         var closestEndTime = GetNearestTime(endTimes);
-
-        Logger.Debug($"ClosestStartTime: {closestStartTime.TotalSeconds}s");
-        Logger.Debug($"ClosestEndTime: {closestEndTime.TotalSeconds}s");
 
         return new Dictionary<string, int>
         {
