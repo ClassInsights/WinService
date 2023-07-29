@@ -1,11 +1,5 @@
-﻿using Newtonsoft.Json.Linq;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
+﻿using System.Diagnostics;
 using System.Management;
-using System.Text;
-using System.Threading.Tasks;
 using WinService.Models;
 
 namespace WinService.Manager;
@@ -26,58 +20,57 @@ public class ShutdownManager
     public async Task Start(CancellationToken token)
     {
         _lessons = await Api.GetLessonsAsync(_winService.Room.Id);
-        CheckShutdownLoop(token);
+        _ = Task.Run(async () =>
+        {
+            await CheckShutdownLoop(token);
+        }, token);
     }
 
     /// <summary>
     /// Checks if shutdown is ready and sends shutdown to client
     /// </summary>
     /// <param name="token"></param>
-    /// <returns></returns>
-    private void CheckShutdownLoop(CancellationToken token)
+    private async Task CheckShutdownLoop(CancellationToken token)
     {
-        _ = Task.Run(async () =>
+        await Task.Delay(60000, token); // wait 1 Minute for User to sign in and so on ...
+
+        var loopStart = DateTime.Now;
+        while (!token.IsCancellationRequested)
         {
-            await Task.Delay(60000, token); // wait 1 Minute for User to sign in and so on ...
-
-            var loopStart = DateTime.Now;
-            while (!token.IsCancellationRequested)
+            try
             {
-                try
+                // wait until current lesson is over
+                var lessonEnd = GetNextLessonInfo()["endTime"];
+                await Task.Delay(lessonEnd, token);
+
+                // get lesson infos (startTime, endTime) again after lesson is over
+                var delay = GetNextLessonInfo();
+
+                // if lessonStart takes longer than buffer or lessonStart is in past, send shutdown
+                if (delay["startTime"] / 60000 > BufferMinutes || delay["startTime"] <= 0)
                 {
-                    // wait until current lesson is over
-                    var lessonEnd = GetNextLessonInfo()["endTime"];
-                    await Task.Delay(lessonEnd, token);
-
-                    // get lesson infos (startTime, endTime) again after lesson is over
-                    var delay = GetNextLessonInfo();
-
-                    // if lessonStart takes longer than buffer or lessonStart is in past, send shutdown
-                    if (delay["startTime"] / 60000 > BufferMinutes || delay["startTime"] <= 0)
+                    // if pc isn't awake at least 5 minutes, then always wait at least NoLessonsUseTime before shutdown
+                    if ((DateTime.Now - loopStart).TotalMinutes < 5)
                     {
-                        // if pc isn't awake at least 5 minutes, then always wait at least NoLessonsUseTime before shutdown
-                        if ((DateTime.Now - loopStart).TotalMinutes < 5)
-                        {
-                            await Task.Delay(NoLessonsUseTime * 60000, token);
-                            continue; // check again if any lesson is near
-                        }
-
-                        await SendShutdownAsync(token);
-                        loopStart = DateTime.Now; // reset loopStart after shutdown sent, that if users aborts after all lessons it'll wait again for NoLessonsUseTime
-                        continue; // skip waiting for next lesson, otherwise service could wait long hours if user aborts shutdown (service will now wait for lessonEnd OR NoLessonsUseTime)
+                        await Task.Delay(NoLessonsUseTime * 60000, token);
+                        continue; // check again if any lesson is near
                     }
 
-                    var lessonStart = Math.Min(delay["startTime"], NoLessonsUseTime * 60000);
+                    await SendShutdownAsync(token);
+                    loopStart = DateTime.Now; // reset loopStart after shutdown sent, that if users aborts after all lessons it'll wait again for NoLessonsUseTime
+                    continue; // skip waiting for next lesson, otherwise service could wait long hours if user aborts shutdown (service will now wait for lessonEnd OR NoLessonsUseTime)
+                }
 
-                    // wait until next lesson starts (max duration is NoLessonUseTime)
-                    await Task.Delay(lessonStart, token);
-                }
-                catch (Exception e)
-                {
-                    Logger.Error($"Unhandled {e.GetType()}, Message: {e.Message}, Stacktrace : {e.StackTrace}");
-                }
+                var lessonStart = Math.Min(delay["startTime"], NoLessonsUseTime * 60000);
+
+                // wait until next lesson starts (max duration is NoLessonUseTime)
+                await Task.Delay(lessonStart, token);
             }
-        }, token);
+            catch (Exception e)
+            {
+                Logger.Error($"Unhandled {e.GetType()}, Message: {e.Message}, Stacktrace : {e.StackTrace}");
+            }
+        }
     }
 
 
