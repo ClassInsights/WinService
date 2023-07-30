@@ -17,13 +17,11 @@ public class ShutdownManager
         _winService = winService;
     }
 
+    // endless function, will freeze
     public async Task Start(CancellationToken token)
     {
         _lessons = await Api.GetLessonsAsync(_winService.Room.Id);
-        _ = Task.Run(async () =>
-        {
-            await CheckShutdownLoop(token);
-        }, token);
+        await CheckShutdownLoop(token);
     }
 
     /// <summary>

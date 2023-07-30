@@ -5,7 +5,7 @@ namespace WinService;
 
 public class WinService
 {
-    private readonly WsManager _wsManager = new ();
+    private readonly WsManager _wsManager;
     private readonly ShutdownManager _shutdownManager;
     private readonly HeartbeatManager _heartbeatManager;
     public DbModels.TabRooms Room = new();
@@ -14,6 +14,7 @@ public class WinService
     {
         _shutdownManager = new ShutdownManager(this);
         _heartbeatManager = new HeartbeatManager(this);
+        _wsManager = new WsManager(this);
     }
 
     public async Task RunAsync(CancellationToken token)
@@ -24,15 +25,12 @@ public class WinService
         try
         {
             _heartbeatManager.Start(token);
-            await _shutdownManager.Start(token);
-            await _wsManager.Start("wss://srv-iis.projekt.lokal/ws/pc");
+            await Task.WhenAll(_shutdownManager.Start(token), _wsManager.Start()); // takes endless unless service stop
         }
         catch (OperationCanceledException)
         {
             Logger.Log("Tasks cancelled!");
         }
-
-        await Task.Delay(-1, token);
     }
 
     public async Task StopAsync()

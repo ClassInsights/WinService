@@ -8,49 +8,48 @@ namespace WinService.Manager;
 
 public class WsManager
 {
+    private const string Endpoint = "wss://srv-iis.projekt.lokal/ws/pc";
+    private readonly WinService _winService;
     private readonly ClientWebSocket _webSocket;
     private readonly EnergyManager _energyManager;
+    private readonly Timer _timer;
 
-    public WsManager()
+    public WsManager(WinService winService)
     {
+        _winService = winService;
         _webSocket = new ClientWebSocket();
         _energyManager = new EnergyManager();
+        _timer = new Timer { Interval = 500 };
     }
 
-    public async Task Start(string endpoint)
+    public async Task Start()
     {
         ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
-        await Connect(endpoint);
-        StartHeartbeatSender();
+        await Connect(Endpoint);
+
+        _timer.Elapsed += async (_, _) => await SendHeartbeat();
+        _timer.Start();
     }
 
     public async Task Stop()
     {
         await _webSocket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
+        _timer.Stop();
     }
 
     private async Task Connect(string endpoint)
     {
         await _webSocket.ConnectAsync(new Uri(endpoint), CancellationToken.None);
-    }
-
-    private void StartHeartbeatSender()
-    {
-        var timer = new Timer
-        {
-            Interval = 500
-        };
-        timer.Elapsed += async (_, _) => await SendHeartbeat();
-        timer.Start();
+        Logger.Log("Connected to Websocket!");
     }
 
     private async Task SendHeartbeat()
     {
         var heartbeat = new Heartbeat
         {
-            Name = "OG2-DV2",
+            Name = Environment.MachineName,
             Type = "Heartbeat",
-            Room = 102,
+            Room = _winService.Room.Id,
             Data = new Data
             {
                 Power = _energyManager.GetCpuEnergy()
