@@ -44,6 +44,7 @@ public class HeartbeatManager
         catch (Exception e)
         {
             Logger.Error($"Heartbeat failed with error: {e.Message}");
+            if (e.InnerException != null) Logger.Error($"InnerException: {e.InnerException.Message}");
         }
     }
 
