@@ -11,7 +11,14 @@ public class StartService
         {
             // retrieve lessons
             var lessons = await Api.GetLessonsAsync();
-            
+
+            // if no lessons, recheck every hour
+            if (lessons.Count == 0)
+            {
+                await Task.Delay(3600000, token);
+                continue;
+            }
+
             // get all start times
             var startTimes = lessons.Select(x => x.StartTime.TimeOfDay).Distinct().ToList();
             
