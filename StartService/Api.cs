@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using StartService.Models;
 
@@ -6,12 +7,8 @@ namespace StartService;
 
 public class Api
 {
-#if DEBUG
-    public const string BaseUrl = "https://localhost:7061/api/";
-#else
-    public const string BaseUrl = "https://srv-iis.projekt.lokal/api/";
-#endif
-
+    private static string? _baseUrl;
+   
     public static async Task<DbModels.TabRooms> GetRoomAsync(string name)
     {
         var response = await SendRequestAsync("Room", query: $"roomName={name}", requestMethod: RequestMethod.Get);
@@ -32,9 +29,15 @@ public class Api
 
     private static async Task<string> SendRequestAsync(string endpoint, string body = "", string query = "", RequestMethod requestMethod = RequestMethod.Post)
     {
+        if (_baseUrl is null)
+        {
+            var config = new ConfigurationBuilder().AddJsonFile("appsettings.json").Build();
+            _baseUrl = config.GetValue<string>("BaseUrl") ?? throw new Exception("No 'BaseUrl' specified in config!");
+        }
+
         using var client = new HttpClient();
         var content = new StringContent(body, Encoding.UTF8, "application/json");
-        var url = $"{BaseUrl}{endpoint}?{query}";
+        var url = $"{_baseUrl}{endpoint}?{query}";
 
         var response = requestMethod switch
         {
