@@ -51,9 +51,10 @@ public class WsManager
             Data = new Data
             {
                 Power = _energyManager.GetPowerUsage(),
-                CpuUsage = _energyManager.GetCpuUsage(),
+                CpuUsage = _energyManager.GetCpuUsages(),
                 RamUsage = _energyManager.GetRamUsage(),
-                DisksUsage = _energyManager.GetDisksUsage()
+                DiskUsages = _energyManager.GetDiskUsages(),
+                EthernetUsages = _energyManager.GetEthernetUsages()
             }
         };
 
@@ -74,6 +75,7 @@ public class WsManager
         public float Power { get; set; }
         public float RamUsage { get; set; }
         public List<float>? CpuUsage { get; set; }
-        public List<float>? DisksUsage { get; set; }
+        public List<float>? DiskUsages { get; set; }
+        public List<Dictionary<string, float>>? EthernetUsages { get; set; }
     }
 }

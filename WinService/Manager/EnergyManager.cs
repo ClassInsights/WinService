@@ -58,7 +58,7 @@ public class EnergyManager : IDisposable
     /// Reads all Cpu usages
     /// </summary>
     /// <returns>List of all cpu usages in percent</returns>
-    public List<float> GetCpuUsage()
+    public List<float> GetCpuUsages()
     {
         var cpuList = _computer.Hardware.Where(x => x.HardwareType == HardwareType.Cpu).ToList();
 
@@ -90,7 +90,7 @@ public class EnergyManager : IDisposable
     /// Reads the Disks usages
     /// </summary>
     /// <returns>List of all disks usages in percent</returns>
-    public List<float> GetDisksUsage()
+    public List<float> GetDiskUsages()
     {
         var diskList = _computer.Hardware.Where(x => x.HardwareType == HardwareType.Storage);
         
@@ -101,6 +101,16 @@ public class EnergyManager : IDisposable
         }
 
         return diskUsages;
+    }
+
+    /// <summary>
+    /// Reads the current ethernet up and download speed
+    /// </summary>
+    /// <returns>List of all ethernet adapters up and download speed in bps as Dictionary</returns>
+    public List<Dictionary<string, float>> GetEthernetUsages()
+    {
+        var ethernetList = _computer.Hardware.Where(x => x.HardwareType == HardwareType.Network);
+        return ethernetList.Select(ethernetSensor => ethernetSensor.Sensors.Where(sensor => sensor.SensorType == SensorType.Throughput)).Select(ethernetSensors => ethernetSensors.ToDictionary(x => x.Name, x => x.Value.GetValueOrDefault(0))).ToList();
     }
 
     public void Dispose()
