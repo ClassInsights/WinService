@@ -25,17 +25,82 @@ public class EnergyManager : IDisposable
     {
         _computer = new Computer
         {
-            IsCpuEnabled = true
+            IsCpuEnabled = true,
+            IsGpuEnabled = true,
+            IsMemoryEnabled = true,
+            IsMotherboardEnabled = true,
+            IsControllerEnabled = true,
+            IsNetworkEnabled = true,
+            IsStorageEnabled = true
         };
-
+        
         _computer.Open();
     }
 
-    // returns sum of all cpu energy
-    public float GetCpuEnergy()
+    /// <summary>
+    /// Refreshes the values for hardware information
+    /// </summary>
+    public void UpdateValues()
     {
         _computer.Accept(new UpdateVisitor());
-        return _computer.Hardware.Where(x => x.HardwareType == HardwareType.Cpu).Aggregate<IHardware?, float?>(0f, (current, hardware) => current + hardware?.Sensors.Where(x => x.SensorType == SensorType.Power).Sum(x => x.Value)) ?? 0;
+    }
+
+    /// <summary>
+    /// Reads the Energy use of the PC
+    /// </summary>
+    /// <returns>Energy usage in watt</returns>
+    public float GetPowerUsage()
+    {
+        return _computer.Hardware.Sum(hardware => hardware.Sensors.Where(sensor => sensor.SensorType == SensorType.Power).Select(powerSensor => powerSensor.Value.GetValueOrDefault(0)).Sum());
+    }
+
+    /// <summary>
+    /// Reads all Cpu usages
+    /// </summary>
+    /// <returns>List of all cpu usages in percent</returns>
+    public List<float> GetCpuUsage()
+    {
+        var cpuList = _computer.Hardware.Where(x => x.HardwareType == HardwareType.Cpu).ToList();
+
+        var cpuUsages = new List<float>();
+        foreach (var usageSensors in cpuList.Select(cpu => cpu.Sensors.Where(sensor => sensor.Name.Contains("CPU Total"))))
+        {
+            cpuUsages.AddRange(usageSensors.Select(usageSensor => usageSensor.Value.GetValueOrDefault(0)));
+        }
+
+        return cpuUsages;
+    }
+
+    /// <summary>
+    /// Reads the Ram usage
+    /// </summary>
+    /// <returns>Ram usage in percent</returns>
+    public float GetRamUsage()
+    {
+        var ram = _computer.Hardware.FirstOrDefault(x => x.HardwareType == HardwareType.Memory);
+
+        var ramUsageSensor = ram?.Sensors.FirstOrDefault(ramSensor => ramSensor is { SensorType: SensorType.Load, Name: "Memory" });
+        if (ramUsageSensor == null)
+            return 0;
+
+        return ramUsageSensor.Value.GetValueOrDefault(0);
+    }
+
+    /// <summary>
+    /// Reads the Disks usages
+    /// </summary>
+    /// <returns>List of all disks usages in percent</returns>
+    public List<float> GetDisksUsage()
+    {
+        var diskList = _computer.Hardware.Where(x => x.HardwareType == HardwareType.Storage);
+        
+        var diskUsages = new List<float>();
+        foreach (var diskSensors in diskList.Select(diskSensor => diskSensor.Sensors.Where(sensor => sensor is { SensorType: SensorType.Load, Name: "Used Space" })))
+        {
+            diskUsages.AddRange(diskSensors.Select(usageSensor => usageSensor.Value.GetValueOrDefault(0)));
+        }
+
+        return diskUsages;
     }
 
     public void Dispose()

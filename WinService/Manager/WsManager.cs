@@ -45,6 +45,7 @@ public class WsManager
 
     private async Task SendHeartbeat()
     {
+        _energyManager.UpdateValues();
         var heartbeat = new Heartbeat
         {
             Name = Environment.MachineName,
@@ -52,10 +53,13 @@ public class WsManager
             Room = _winService.Room.Id,
             Data = new Data
             {
-                Power = _energyManager.GetCpuEnergy()
+                Power = _energyManager.GetPowerUsage(),
+                CpuUsage = _energyManager.GetCpuUsage(),
+                RamUsage = _energyManager.GetRamUsage(),
+                DisksUsage = _energyManager.GetDisksUsage()
             }
         };
-
+        Logger.Log(JsonConvert.SerializeObject(heartbeat));
         var buffer = new ArraySegment<byte>(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(heartbeat)));
         await _webSocket.SendAsync(buffer, WebSocketMessageType.Text, true, CancellationToken.None);
     }
@@ -71,6 +75,8 @@ public class WsManager
     private class Data
     {
         public float Power { get; set; }
-        public string? Token { get; set; }
+        public float RamUsage { get; set; }
+        public List<float>? CpuUsage { get; set; }
+        public List<float>? DisksUsage { get; set; }
     }
 }
