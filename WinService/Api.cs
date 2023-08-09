@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http.Json;
-using System.Text;
-using System.Text.Json.Nodes;
-using System.Threading.Tasks;
+﻿using System.Text;
 using Newtonsoft.Json;
 using WinService.Models;
 
@@ -12,36 +6,40 @@ namespace WinService;
 
 public class Api
 {
-#if DEBUG
-    public const string BaseUrl = "https://localhost:7061/api/";
-#else
-    public const string BaseUrl = "https://srv-iis.projekt.lokal/api/";
-#endif
+    private readonly WinService _winService;
 
-    public static async Task<DbModels.TabRooms> GetRoomAsync(string name)
+    public Api(WinService winService)
+    {
+        _winService = winService;
+    }
+
+    public async Task<DbModels.TabRooms> GetRoomAsync(string name)
     {
         var response = await SendRequestAsync("Room", query: $"roomName={name}", requestMethod: RequestMethod.Get);
         return JsonConvert.DeserializeObject<DbModels.TabRooms>(response) ?? new DbModels.TabRooms();
     }
 
-    public static async Task<List<DbModels.TabLessons>> GetLessonsAsync(int room)
+    public async Task<List<DbModels.TabLessons>> GetLessonsAsync(int room)
     {
         var response = await SendRequestAsync("Lessons", query: $"roomId={room}", requestMethod: RequestMethod.Get);
         return JsonConvert.DeserializeObject<List<DbModels.TabLessons>>(response) ?? new List<DbModels.TabLessons>();
     }
 
-    public static async Task<DbModels.TabComputers> UpdateComputer(DbModels.TabComputers request)
+    public async Task<DbModels.TabComputers> UpdateComputer(DbModels.TabComputers request)
     {
         var response = await SendRequestAsync("Computer", JsonConvert.SerializeObject(request),
             requestMethod: RequestMethod.Post);
         return JsonConvert.DeserializeObject<DbModels.TabComputers>(response) ?? new DbModels.TabComputers();
     }
 
-    private static async Task<string> SendRequestAsync(string endpoint, string body = "", string query = "", RequestMethod requestMethod = RequestMethod.Post)
+    private async Task<string> SendRequestAsync(string endpoint, string body = "", string query = "", RequestMethod requestMethod = RequestMethod.Post)
     {
+        if (_winService.Configuration["Api:BaseUrl"] is not { } baseUrl)
+            throw new Exception("Api:BaseUrl configuration missing!");
+
         using var client = new HttpClient();
         var content = new StringContent(body, Encoding.UTF8, "application/json");
-        var url = $"{BaseUrl}{endpoint}?{query}";
+        var url = $"{baseUrl}{endpoint}?{query}";
 
         var response = requestMethod switch
         {

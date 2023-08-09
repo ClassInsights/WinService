@@ -1,4 +1,5 @@
-﻿using WinService.Manager;
+﻿using Microsoft.Extensions.Configuration;
+using WinService.Manager;
 using WinService.Models;
 
 namespace WinService;
@@ -8,10 +9,13 @@ public class WinService
     private readonly WsManager _wsManager;
     private readonly ShutdownManager _shutdownManager;
     private readonly HeartbeatManager _heartbeatManager;
+    public readonly Api Api;
+    public readonly IConfigurationRoot Configuration = new ConfigurationBuilder().AddJsonFile("appsettings.json").AddEnvironmentVariables().Build();
     public DbModels.TabRooms Room = new();
 
     public WinService()
     {
+        Api = new Api(this);
         _shutdownManager = new ShutdownManager(this);
         _heartbeatManager = new HeartbeatManager(this);
         _wsManager = new WsManager(this);

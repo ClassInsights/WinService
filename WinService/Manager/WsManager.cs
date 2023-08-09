@@ -1,5 +1,4 @@
-﻿using System.Net;
-using System.Net.WebSockets;
+﻿using System.Net.WebSockets;
 using System.Text;
 using Newtonsoft.Json;
 using Timer = System.Timers.Timer;
@@ -8,7 +7,6 @@ namespace WinService.Manager;
 
 public class WsManager
 {
-    private const string Endpoint = "wss://srv-iis.projekt.lokal/ws/pc";
     private readonly WinService _winService;
     private readonly ClientWebSocket _webSocket;
     private readonly EnergyManager _energyManager;
@@ -24,8 +22,7 @@ public class WsManager
 
     public async Task Start()
     {
-        ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
-        await Connect(Endpoint);
+        await Connect(_winService.Configuration["Websocket:Endpoint"] ?? "");
 
         _timer.Elapsed += async (_, _) => await SendHeartbeat();
         _timer.Start();
@@ -59,7 +56,7 @@ public class WsManager
                 DisksUsage = _energyManager.GetDisksUsage()
             }
         };
-        Logger.Log(JsonConvert.SerializeObject(heartbeat));
+
         var buffer = new ArraySegment<byte>(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(heartbeat)));
         await _webSocket.SendAsync(buffer, WebSocketMessageType.Text, true, CancellationToken.None);
     }

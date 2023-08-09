@@ -30,7 +30,7 @@ public class HeartbeatManager
         {
             while (!token.IsCancellationRequested)
             {
-                await Api.UpdateComputer(new DbModels.TabComputers
+                await _winService.Api.UpdateComputer(new DbModels.TabComputers
                 {
                     LastSeen = DateTime.Now,
                     Name = _winService.Room.Name,
