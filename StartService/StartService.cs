@@ -5,38 +5,45 @@ namespace StartService;
 
 public class StartService
 {
-    public async Task RunAsync(CancellationToken token)
+    public static async Task RunAsync(CancellationToken token)
     {
-        while (!token.IsCancellationRequested)
+        try
         {
-            // retrieve lessons
-            var lessons = await Api.GetLessonsAsync();
-
-            // if no lessons, recheck every hour
-            if (lessons.Count == 0)
+            while (!token.IsCancellationRequested)
             {
-                await Task.Delay(3600000, token);
-                continue;
-            }
+                // retrieve lessons
+                var lessons = await Api.GetLessonsAsync();
 
-            // get all start times
-            var startTimes = lessons.Select(x => x.StartTime.TimeOfDay).Distinct().ToList();
-            
-            // wait for next lesson start, but at least 2 minutes
-            var startTime = GetNearestTime(startTimes);
-            await Task.Delay((int) Math.Max(startTime.TotalMilliseconds - 5000, 120000), token);
-
-            var comingLessons = lessons.Where(x => x.StartTime > DateTime.Now.AddMinutes(-5) && x.StartTime < DateTime.Now.AddMinutes(5)).Select(x => x.Room).Distinct().ToList();
-
-            foreach (var roomId in comingLessons)
-            {
-                var computers = await Api.GetComputersAsync(roomId);
-                foreach (var computer in computers.Where(computer => computer.Mac != null))
+                // if no lessons, recheck every hour
+                if (lessons.Count == 0)
                 {
-                    if (PhysicalAddress.TryParse(computer.Mac, out var address))
-                        await address.SendWolAsync();
+                    await Task.Delay(3600000, token);
+                    continue;
+                }
+
+                // get all start times
+                var startTimes = lessons.Select(x => x.StartTime.TimeOfDay).Distinct().ToList();
+                
+                // wait for next lesson start, but at least 2 minutes
+                var startTime = GetNearestTime(startTimes);
+                await Task.Delay((int) Math.Max(startTime.TotalMilliseconds - 5000, 120000), token);
+
+                var comingLessons = lessons.Where(x => x.StartTime > DateTime.Now.AddMinutes(-5) && x.StartTime < DateTime.Now.AddMinutes(5)).Select(x => x.Room).Distinct().ToList();
+
+                foreach (var roomId in comingLessons)
+                {
+                    var computers = await Api.GetComputersAsync(roomId);
+                    foreach (var computer in computers.Where(computer => computer.Mac != null))
+                    {
+                        if (PhysicalAddress.TryParse(computer.Mac, out var address))
+                            await address.SendWolAsync();
+                    }
                 }
             }
+        }
+        catch (OperationCanceledException)
+        {
+            // ignore
         }
     }
 

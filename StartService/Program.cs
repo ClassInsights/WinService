@@ -8,4 +8,4 @@ if (!Environment.UserInteractive && RuntimeInformation.IsOSPlatform(OSPlatform.W
     Host.CreateDefaultBuilder(args)
         .ConfigureServices((_, services) => { services.AddHostedService<Service>(); })
         .UseWindowsService(options => { options.ServiceName = "ClassInsights"; }).Build().Run();
-else new StartService.StartService().RunAsync(new CancellationToken()).GetAwaiter().GetResult();
+else StartService.StartService.RunAsync(new CancellationToken()).GetAwaiter().GetResult();

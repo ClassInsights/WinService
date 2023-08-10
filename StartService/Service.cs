@@ -16,7 +16,7 @@ public class Service : BackgroundService
     {
         try
         {
-            await new StartService().RunAsync(token);
+            await StartService.RunAsync(token);
         }
         catch (Exception ex)
         {
