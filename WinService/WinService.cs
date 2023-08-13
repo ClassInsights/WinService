@@ -29,7 +29,7 @@ public class WinService
         try
         {
             _heartbeatManager.Start(token);
-            await Task.WhenAll(_shutdownManager.Start(token), _wsManager.Start()); // takes endless unless service stop
+            await Task.WhenAll(_shutdownManager.Start(token), ShutdownManager.CheckLifeSign(token), _wsManager.Start()); // takes endless unless service stop
         }
         catch (OperationCanceledException)
         {

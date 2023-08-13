@@ -25,6 +25,19 @@ public class ShutdownManager
     }
 
     /// <summary>
+    /// Shutdown PC after 7 minutes if no user is logged in
+    /// </summary>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    public static async Task CheckLifeSign(CancellationToken token)
+    {
+        // wait 7 minutes
+        await Task.Delay(420000, token);
+        if (GetLoggedInUsername() is null)
+            await SendShutdownAsync(token);
+    }
+
+    /// <summary>
     /// Checks if shutdown is ready and sends shutdown to client
     /// </summary>
     /// <param name="token"></param>
