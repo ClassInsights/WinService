@@ -2,7 +2,7 @@
 
 public class ApiModels
 {
-    public record Class(int ClassId, string Name, string Head, string? Group);
+    public record Class(int ClassId, string Name, string Head, string? AzureGroupID);
 
     public record Lesson(int LessonId, int RoomId, int SubjectId, int ClassId, DateTime StartTime, DateTime EndTime);
 
