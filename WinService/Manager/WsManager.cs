@@ -42,12 +42,17 @@ public class WsManager
 
     private async Task SendHeartbeat()
     {
+        if (_winService is not { Computer: not null, Room: not null })
+            return;
+
         _energyManager.UpdateValues();
         var heartbeat = new Heartbeat
         {
+            ComputerId = _winService.Computer.ComputerId,
             Name = Environment.MachineName,
             Type = "Heartbeat",
             Room = _winService.Room.RoomId,
+            UpTime = DateTime.Now.AddMilliseconds(-1 * Environment.TickCount64),
             Data = new Data
             {
                 Power = _energyManager.GetPowerUsage(),
@@ -64,9 +69,11 @@ public class WsManager
 
     private class Heartbeat
     {
+        public int ComputerId { get; set; }
         public string Type { get; set; } = null!;
         public string Name { get; set; } = null!;
         public int Room { get; set; }
+        public DateTime UpTime { get; set; }
         public Data? Data { get; set; }
     }
 
