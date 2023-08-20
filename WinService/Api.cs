@@ -13,23 +13,23 @@ public class Api
         _winService = winService;
     }
 
-    public async Task<DbModels.TabRooms> GetRoomAsync(string name)
+    public async Task<ApiModels.Room> GetRoomAsync(string name)
     {
         var response = await SendRequestAsync("Room", query: $"roomName={name}", requestMethod: RequestMethod.Get);
-        return JsonConvert.DeserializeObject<DbModels.TabRooms>(response) ?? new DbModels.TabRooms();
+        return JsonConvert.DeserializeObject<ApiModels.Room>(response);
     }
 
-    public async Task<List<DbModels.TabLessons>> GetLessonsAsync(int room)
+    public async Task<List<ApiModels.Lesson>> GetLessonsAsync(int room)
     {
         var response = await SendRequestAsync("Lessons", query: $"roomId={room}", requestMethod: RequestMethod.Get);
-        return JsonConvert.DeserializeObject<List<DbModels.TabLessons>>(response) ?? new List<DbModels.TabLessons>();
+        return JsonConvert.DeserializeObject<List<ApiModels.Lesson>>(response) ?? new List<ApiModels.Lesson>();
     }
 
-    public async Task<DbModels.TabComputers> UpdateComputer(DbModels.TabComputers request)
+    public async Task<ApiModels.Computer> UpdateComputer(ApiModels.Computer request)
     {
         var response = await SendRequestAsync("Computer", JsonConvert.SerializeObject(request),
             requestMethod: RequestMethod.Post);
-        return JsonConvert.DeserializeObject<DbModels.TabComputers>(response) ?? new DbModels.TabComputers();
+        return JsonConvert.DeserializeObject<ApiModels.Computer>(response);
     }
 
     private async Task<string> SendRequestAsync(string endpoint, string body = "", string query = "", RequestMethod requestMethod = RequestMethod.Post)

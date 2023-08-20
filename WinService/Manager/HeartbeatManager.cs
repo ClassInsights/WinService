@@ -30,14 +30,15 @@ public class HeartbeatManager
         {
             while (!token.IsCancellationRequested)
             {
-                await _winService.Api.UpdateComputer(new DbModels.TabComputers
-                {
-                    LastSeen = DateTime.Now,
-                    Name = _winService.Room.Name,
-                    Room = _winService.Room.Id,
-                    Mac = GetMacAddress(),
-                    Ip = GetLocalIpAddress()
-                });
+                await _winService.Api.UpdateComputer(new ApiModels.Computer
+                (
+                    0,
+                    LastSeen: DateTime.Now,
+                    Name: _winService.Room.Name,
+                    RoomId: _winService.Room.RoomId,
+                    MacAddress: GetMacAddress(),
+                    IpAddress: GetLocalIpAddress()
+                ));
                 token.WaitHandle.WaitOne(TimeSpan.FromSeconds(new Random().Next(20, 60)));
             }
         }

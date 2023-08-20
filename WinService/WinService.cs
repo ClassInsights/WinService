@@ -11,7 +11,7 @@ public class WinService
     private readonly HeartbeatManager _heartbeatManager;
     public readonly Api Api;
     public readonly IConfigurationRoot Configuration = new ConfigurationBuilder().AddJsonFile("appsettings.json").AddEnvironmentVariables().Build();
-    public DbModels.TabRooms Room = new();
+    public ApiModels.Room Room = new(-1, "", "");
 
     public WinService()
     {

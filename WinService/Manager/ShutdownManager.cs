@@ -9,7 +9,7 @@ public class ShutdownManager
     private readonly WinService _winService;
     private const int BufferMinutes = 20; // time until no lessons should be to shutdown
     private const int NoLessonsUseTime = 50; // time how long pc should be usable after all lessons and max delay when recheck for lesson should be
-    private List<DbModels.TabLessons> _lessons = new();
+    private List<ApiModels.Lesson> _lessons = new();
 
 
     public ShutdownManager(WinService winService)
@@ -20,7 +20,7 @@ public class ShutdownManager
     // endless function, will freeze
     public async Task Start(CancellationToken token)
     {
-        _lessons = await _winService.Api.GetLessonsAsync(_winService.Room.Id);
+        _lessons = await _winService.Api.GetLessonsAsync(_winService.Room.RoomId);
         await CheckShutdownLoop(token);
     }
 

@@ -47,7 +47,7 @@ public class WsManager
         {
             Name = Environment.MachineName,
             Type = "Heartbeat",
-            Room = _winService.Room.Id,
+            Room = _winService.Room.RoomId,
             Data = new Data
             {
                 Power = _energyManager.GetPowerUsage(),
