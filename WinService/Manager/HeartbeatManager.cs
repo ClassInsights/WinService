@@ -28,11 +28,11 @@ public class HeartbeatManager
     {
         try
         {
-            while (!token.IsCancellationRequested)
+            while (!token.IsCancellationRequested && _winService is { Computer: not null, Room: not null })
             {
                 await _winService.Api.UpdateComputer(new ApiModels.Computer
                 (
-                    0,
+                    ComputerId: _winService.Computer.ComputerId,
                     LastSeen: DateTime.Now,
                     Name: _winService.Room.Name,
                     RoomId: _winService.Room.RoomId,

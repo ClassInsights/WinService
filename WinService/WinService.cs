@@ -11,7 +11,8 @@ public class WinService
     private readonly HeartbeatManager _heartbeatManager;
     public readonly Api Api;
     public readonly IConfigurationRoot Configuration = new ConfigurationBuilder().AddJsonFile("appsettings.json").AddEnvironmentVariables().Build();
-    public ApiModels.Room Room = new(-1, "", "");
+    public ApiModels.Room? Room;
+    public ApiModels.Computer? Computer;
 
     public WinService()
     {
@@ -25,7 +26,11 @@ public class WinService
     {
         Logger.Log("Run WinService!");
         Room = await Api.GetRoomAsync(Environment.MachineName);
-
+#if DEBUG
+        Computer = await Api.GetComputerAsync("OG1-DV4");
+#else
+        Computer = await Api.GetComputerAsync(Environment.MachineName);
+#endif
         try
         {
             _heartbeatManager.Start(token);

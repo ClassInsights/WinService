@@ -32,7 +32,7 @@ public class Api
         if (_baseUrl is null)
         {
             var config = new ConfigurationBuilder().AddJsonFile("appsettings.json").Build();
-            _baseUrl = config.GetValue<string>("BaseUrl") ?? throw new Exception("No 'BaseUrl' specified in config!");
+            _baseUrl = config["BaseUrl"] ?? throw new Exception("No 'BaseUrl' specified in config!");
         }
 
         using var client = new HttpClient();

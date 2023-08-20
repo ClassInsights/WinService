@@ -13,22 +13,27 @@ public class Api
         _winService = winService;
     }
 
-    public async Task<ApiModels.Room> GetRoomAsync(string name)
+    public async Task<ApiModels.Room?> GetRoomAsync(string name)
     {
-        var response = await SendRequestAsync("Room", query: $"roomName={name}", requestMethod: RequestMethod.Get);
+        var response = await SendRequestAsync($"rooms/{name}", requestMethod: RequestMethod.Get);
         return JsonConvert.DeserializeObject<ApiModels.Room>(response);
+    }
+
+    public async Task<ApiModels.Computer?> GetComputerAsync(string name)
+    {
+        var response = await SendRequestAsync($"computer/{name}", requestMethod: RequestMethod.Get);
+        return JsonConvert.DeserializeObject<ApiModels.Computer>(response);
     }
 
     public async Task<List<ApiModels.Lesson>> GetLessonsAsync(int room)
     {
-        var response = await SendRequestAsync("Lessons", query: $"roomId={room}", requestMethod: RequestMethod.Get);
+        var response = await SendRequestAsync($"rooms/{room}", query: "search=lessons", requestMethod: RequestMethod.Get);
         return JsonConvert.DeserializeObject<List<ApiModels.Lesson>>(response) ?? new List<ApiModels.Lesson>();
     }
 
-    public async Task<ApiModels.Computer> UpdateComputer(ApiModels.Computer request)
+    public async Task<ApiModels.Computer?> UpdateComputer(ApiModels.Computer request)
     {
-        var response = await SendRequestAsync("Computer", JsonConvert.SerializeObject(request),
-            requestMethod: RequestMethod.Post);
+        var response = await SendRequestAsync("computers", JsonConvert.SerializeObject(request), requestMethod: RequestMethod.Post);
         return JsonConvert.DeserializeObject<ApiModels.Computer>(response);
     }
 
