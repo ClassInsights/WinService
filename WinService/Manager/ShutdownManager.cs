@@ -152,11 +152,9 @@ public class ShutdownManager
     }
 
     // https://stackoverflow.com/a/7186755
-    private static string? GetLoggedInUsername()
+    public static string? GetLoggedInUsername()
     {
-        if (!OperatingSystem.IsWindows()) throw new NotImplementedException();
         var searcher = new ManagementObjectSearcher("SELECT UserName FROM Win32_ComputerSystem");
-        var collection = searcher.Get();
-        return collection.Cast<ManagementBaseObject>().First()["UserName"] as string;
+        return searcher.Get().Cast<ManagementBaseObject>().First()["UserName"] as string;
     }
 }
