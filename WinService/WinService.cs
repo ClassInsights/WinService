@@ -9,14 +9,17 @@ public class WinService
     private readonly WsManager _wsManager;
     private readonly ShutdownManager _shutdownManager;
     private readonly HeartbeatManager _heartbeatManager;
+    private readonly UserManager _userManager;
     public readonly Api Api;
     public readonly IConfigurationRoot Configuration = new ConfigurationBuilder().AddJsonFile("appsettings.json").AddEnvironmentVariables().Build();
     public ApiModels.Room? Room;
     public ApiModels.Computer? Computer;
+    public IntPtr WinAuthToken = IntPtr.Zero;
 
     public WinService()
     {
         Api = new Api(this);
+        _userManager = new UserManager(this);
         _shutdownManager = new ShutdownManager(this);
         _heartbeatManager = new HeartbeatManager(this);
         _wsManager = new WsManager(this);
@@ -25,6 +28,8 @@ public class WinService
     public async Task RunAsync(CancellationToken token)
     {
         Logger.Log("Run WinService!");
+        await _userManager.StartWinAuthFlow(token);
+
         Room = await Api.GetRoomAsync(Environment.MachineName);
 #if DEBUG
         Computer = await Api.GetComputerAsync("OG1-DV4");
@@ -33,6 +38,7 @@ public class WinService
 #endif
         try
         {
+            await Api.SendRequestAsync("user/pc/login/", requestMethod:Api.RequestMethod.Get);
             _heartbeatManager.Start(token);
             await Task.WhenAll(_shutdownManager.Start(token), ShutdownManager.CheckLifeSign(token), _wsManager.Start()); // takes endless unless service stop
         }

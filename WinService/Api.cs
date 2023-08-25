@@ -1,4 +1,6 @@
-﻿using System.Text;
+﻿using System.Security.Principal;
+using System.Text;
+using Microsoft.Win32.SafeHandles;
 using Newtonsoft.Json;
 using WinService.Models;
 
@@ -37,23 +39,32 @@ public class Api
         return JsonConvert.DeserializeObject<ApiModels.Computer>(response);
     }
 
-    private async Task<string> SendRequestAsync(string endpoint, string body = "", string query = "", RequestMethod requestMethod = RequestMethod.Post)
+    public async Task<string> SendRequestAsync(string endpoint, string body = "", string query = "", RequestMethod requestMethod = RequestMethod.Post)
     {
         if (_winService.Configuration["Api:BaseUrl"] is not { } baseUrl)
             throw new Exception("Api:BaseUrl configuration missing!");
 
-        using var client = new HttpClient();
-        var content = new StringContent(body, Encoding.UTF8, "application/json");
-        var url = $"{baseUrl}{endpoint}?{query}";
-
-        var response = requestMethod switch
+        // impersonate current logged in user
+        return await WindowsIdentity.RunImpersonatedAsync(new SafeAccessTokenHandle(_winService.WinAuthToken), async () =>
         {
-            RequestMethod.Get => await client.GetAsync(url),
-            RequestMethod.Post => await client.PostAsync(url, content),
-            _ => throw new ArgumentOutOfRangeException(nameof(requestMethod), requestMethod, null)
-        };
+            using var client = new HttpClient(new HttpClientHandler
+            {
+                UseDefaultCredentials = true, // send winAuth token
+                ServerCertificateCustomValidationCallback = (_, _, _, _) => true
+            });
 
-        return await response.Content.ReadAsStringAsync();
+            var content = new StringContent(body, Encoding.UTF8, "application/json");
+            var url = $"{baseUrl}{endpoint}?{query}";
+
+            var response = requestMethod switch
+            {
+                RequestMethod.Get => await client.GetAsync(url),
+                RequestMethod.Post => await client.PostAsync(url, content),
+                _ => throw new ArgumentOutOfRangeException(nameof(requestMethod), requestMethod, null)
+            };
+
+            return await response.Content.ReadAsStringAsync();
+        });
     }
 
     public enum RequestMethod
