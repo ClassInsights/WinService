@@ -1,4 +1,5 @@
-﻿using System.Security.Principal;
+﻿using System.Security.Cryptography.X509Certificates;
+using System.Security.Principal;
 using System.Text;
 using Microsoft.Win32.SafeHandles;
 using Newtonsoft.Json;
@@ -41,17 +42,30 @@ public class Api
 
     public async Task<string> SendRequestAsync(string endpoint, string body = "", string query = "", RequestMethod requestMethod = RequestMethod.Post)
     {
-        if (_winService.Configuration["Api:BaseUrl"] is not { } baseUrl)
+        if (_winService.Configuration["Api:BaseUrl"] is not { } baseUrl || _winService.Configuration["Api:CertificateIssuer"] is not { } certIssuer)
             throw new Exception("Api:BaseUrl configuration missing!");
 
+        var store = new X509Store(StoreName.TrustedPublisher, StoreLocation.LocalMachine);
+        store.Open(OpenFlags.ReadOnly);
+
+        var certs = store.Certificates.Find(X509FindType.FindBySubjectName, certIssuer, false);
+        store.Close();
+
+        if (certs.Count < 1)
+            throw new Exception("No certificate installed!");
+        
         // impersonate current logged in user
-        return await WindowsIdentity.RunImpersonatedAsync(new SafeAccessTokenHandle(_winService.WinAuthToken), async () =>
+        return await WindowsIdentity.RunImpersonatedAsync(new SafeAccessTokenHandle(_winService.WinAuthToken), async () => 
         {
-            using var client = new HttpClient(new HttpClientHandler
+            var handler = new HttpClientHandler
             {
                 UseDefaultCredentials = true, // send winAuth token
-                ServerCertificateCustomValidationCallback = (_, _, _, _) => true
-            });
+                ClientCertificateOptions = ClientCertificateOption.Manual,
+                ServerCertificateCustomValidationCallback = (_, _, _, _) => true,
+            };
+
+            handler.ClientCertificates.AddRange(certs); 
+            using var client = new HttpClient(handler);
 
             var content = new StringContent(body, Encoding.UTF8, "application/json");
             var url = $"{baseUrl}{endpoint}?{query}";
