@@ -29,16 +29,17 @@ public class WinService
     {
         Logger.Log("Run WinService!");
         await _userManager.StartWinAuthFlow(token);
+        await Api.Authorize();
 
-        Room = await Api.GetRoomAsync(Environment.MachineName);
 #if DEBUG
+        Room = await Api.GetRoomAsync("DV2");
         Computer = await Api.GetComputerAsync("OG1-DV4");
 #else
+        Room = await Api.GetRoomAsync(Environment.MachineName);
         Computer = await Api.GetComputerAsync(Environment.MachineName);
 #endif
         try
         {
-            await Api.SendRequestAsync("user/pc/login/", requestMethod:Api.RequestMethod.Get);
             _heartbeatManager.Start(token);
             await Task.WhenAll(_shutdownManager.Start(token), ShutdownManager.CheckLifeSign(token), _wsManager.Start()); // takes endless unless service stop
         }

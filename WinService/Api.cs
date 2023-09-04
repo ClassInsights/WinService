@@ -1,4 +1,5 @@
-﻿using System.Security.Cryptography.X509Certificates;
+﻿using System.Net;
+using System.Security.Cryptography.X509Certificates;
 using System.Security.Principal;
 using System.Text;
 using Microsoft.Win32.SafeHandles;
@@ -10,6 +11,7 @@ namespace WinService;
 public class Api
 {
     private readonly WinService _winService;
+    private string? _jwtToken;
 
     public Api(WinService winService)
     {
@@ -40,10 +42,10 @@ public class Api
         return JsonConvert.DeserializeObject<ApiModels.Computer>(response);
     }
 
-    public async Task<string> SendRequestAsync(string endpoint, string body = "", string query = "", RequestMethod requestMethod = RequestMethod.Post)
+    public async Task Authorize()
     {
-        if (_winService.Configuration["Api:BaseUrl"] is not { } baseUrl || _winService.Configuration["Api:CertificateIssuer"] is not { } certIssuer)
-            throw new Exception("Api:BaseUrl configuration missing!");
+        if (_winService.Configuration["Api:CertificateSubject"] is not { } certIssuer)
+            throw new Exception("Api:CertificateSubject configuration missing!");
 
         var store = new X509Store(StoreName.TrustedPublisher, StoreLocation.LocalMachine);
         store.Open(OpenFlags.ReadOnly);
@@ -52,21 +54,35 @@ public class Api
         store.Close();
 
         if (certs.Count < 1)
-            throw new Exception("No certificate installed!");
+            throw new Exception("No certificate found in Store!");
+        
+        var handler = new HttpClientHandler
+        {
+            UseDefaultCredentials = true, // send winAuth token
+            ClientCertificateOptions = ClientCertificateOption.Manual,
+#if DEBUG
+            ServerCertificateCustomValidationCallback = (_, _, _, _) => true,
+#endif
+        };
+
+        handler.ClientCertificates.AddRange(certs); 
         
         // impersonate current logged in user
-        return await WindowsIdentity.RunImpersonatedAsync(new SafeAccessTokenHandle(_winService.WinAuthToken), async () => 
-        {
-            var handler = new HttpClientHandler
-            {
-                UseDefaultCredentials = true, // send winAuth token
-                ClientCertificateOptions = ClientCertificateOption.Manual,
-                ServerCertificateCustomValidationCallback = (_, _, _, _) => true,
-            };
+        _jwtToken = await WindowsIdentity.RunImpersonatedAsync(new SafeAccessTokenHandle(_winService.WinAuthToken), async () => await SendRequestAsync("user/login/pc", requestMethod: RequestMethod.Get, handler: handler));
+    }
 
-            handler.ClientCertificates.AddRange(certs); 
+    private async Task<string> SendRequestAsync(string endpoint, string body = "", string query = "", RequestMethod requestMethod = RequestMethod.Post, HttpClientHandler? handler = null)
+    {
+        // try 3 times to access endpoint
+        for (var i = 0; i < 3; i++)
+        {
+            if (_winService.Configuration["Api:BaseUrl"] is not { } baseUrl)
+                throw new Exception("Api:BaseUrl configuration missing!");
+
+            handler ??= new HttpClientHandler();
             using var client = new HttpClient(handler);
 
+            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {_jwtToken}");
             var content = new StringContent(body, Encoding.UTF8, "application/json");
             var url = $"{baseUrl}{endpoint}?{query}";
 
@@ -77,11 +93,18 @@ public class Api
                 _ => throw new ArgumentOutOfRangeException(nameof(requestMethod), requestMethod, null)
             };
 
-            return await response.Content.ReadAsStringAsync();
-        });
+            if (response.StatusCode != HttpStatusCode.Unauthorized)
+                return await response.Content.ReadAsStringAsync();
+            
+            // if status code 401, authorize again
+            await Authorize();
+            await Task.Delay(500);
+        }
+
+        throw new Exception("No Permissions for this Endpoint!");
     }
 
-    public enum RequestMethod
+    private enum RequestMethod
     {
         Get = 1,
         Post = 2
