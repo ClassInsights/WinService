@@ -1,21 +1,29 @@
 ﻿using System.Net;
 using System.Net.NetworkInformation;
+using Microsoft.Extensions.Configuration;
 
 namespace StartService;
 
-public class StartService
+internal static class StartService
 {
     public static async Task RunAsync(CancellationToken token)
     {
         try
         {
+            var config = new ConfigurationBuilder().AddJsonFile("appsettings.json").Build();
+            if (config["BaseUrl"] is not { } baseUrl || config["CertificateSubject"] is not { } certSubject)
+                throw new Exception("'BaseUrl' or 'CertificateSubject' missing in config!");
+            
+            var api = new Api(baseUrl, certSubject);
+            await api.Authorize();
+            
             while (!token.IsCancellationRequested)
             {
                 // retrieve lessons
-                var lessons = await Api.GetLessonsAsync();
+                var lessons = await api.GetLessonsAsync();
 
                 // if no lessons, recheck every hour
-                if (lessons.Count == 0)
+                if (lessons is not { Count: not 0 })
                 {
                     await Task.Delay(3600000, token);
                     continue;
@@ -28,16 +36,17 @@ public class StartService
                 var startTime = GetNearestTime(startTimes);
                 await Task.Delay((int) Math.Max(startTime.TotalMilliseconds - 5000, 120000), token);
 
-                var comingLessons = lessons.Where(x => x.StartTime > DateTime.Now.AddMinutes(-5) && x.StartTime < DateTime.Now.AddMinutes(5)).Select(x => x.Room).Distinct().ToList();
+                var comingLessons = lessons.Where(x => x.StartTime > DateTime.Now.AddMinutes(-5) && x.StartTime < DateTime.Now.AddMinutes(5)).Select(x => x.RoomId).Distinct().ToList();
 
                 foreach (var roomId in comingLessons)
                 {
-                    var computers = await Api.GetComputersAsync(roomId);
-                    foreach (var computer in computers.Where(computer => computer.Mac != null))
-                    {
-                        if (PhysicalAddress.TryParse(computer.Mac, out var address))
+                    var computers = await api.GetComputersAsync(roomId);
+                    if (computers is null)
+                        continue;
+
+                    foreach (var computer in computers)
+                        if (PhysicalAddress.TryParse(computer.MacAddress, out var address))
                             await address.SendWolAsync();
-                    }
                 }
             }
         }

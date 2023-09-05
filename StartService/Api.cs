@@ -1,5 +1,7 @@
-﻿using System.Text;
-using Microsoft.Extensions.Configuration;
+﻿using System.Net;
+using System.Net.Http.Headers;
+using System.Security.Cryptography.X509Certificates;
+using System.Text;
 using Newtonsoft.Json;
 using StartService.Models;
 
@@ -7,51 +9,85 @@ namespace StartService;
 
 public class Api
 {
-    private static string? _baseUrl;
-   
-    public static async Task<DbModels.TabRooms> GetRoomAsync(string name)
+    private readonly string _baseUrl;
+    private readonly string _certSubject;
+    private string? _jwtToken;
+
+    public Api(string baseUrl, string certSubject)
     {
-        var response = await SendRequestAsync("Room", query: $"roomName={name}", requestMethod: RequestMethod.Get);
-        return JsonConvert.DeserializeObject<DbModels.TabRooms>(response) ?? new DbModels.TabRooms();
+        _baseUrl = baseUrl;
+        _certSubject = certSubject;
     }
 
-    public static async Task<List<DbModels.TabLessons>> GetLessonsAsync()
+    public async Task<List<ApiModels.Lesson>?> GetLessonsAsync()
     {
-        var response = await SendRequestAsync("Lessons", requestMethod: RequestMethod.Get);
-        return JsonConvert.DeserializeObject<List<DbModels.TabLessons>>(response) ?? new List<DbModels.TabLessons>();
+        var response = await SendRequestAsync("lessons", requestMethod: RequestMethod.Get);
+        return JsonConvert.DeserializeObject<List<ApiModels.Lesson>>(response);
     }
 
-    public static async Task<List<DbModels.TabComputers>> GetComputersAsync(int room)
+    public async Task<List<ApiModels.Computer>?> GetComputersAsync(int room)
     {
-        var response = await SendRequestAsync("Room", query: $"roomId={room}", requestMethod: RequestMethod.Get);
-        return JsonConvert.DeserializeObject<List<DbModels.TabComputers>>(response) ?? new List<DbModels.TabComputers>();
+        var response = await SendRequestAsync($"rooms/{room}", requestMethod: RequestMethod.Get);
+        return JsonConvert.DeserializeObject<List<ApiModels.Computer>>(response);
     }
 
-    private static async Task<string> SendRequestAsync(string endpoint, string body = "", string query = "", RequestMethod requestMethod = RequestMethod.Post)
+    public async Task Authorize()
     {
-        if (_baseUrl is null)
+        var store = new X509Store(StoreName.TrustedPublisher, StoreLocation.LocalMachine);
+        store.Open(OpenFlags.ReadOnly);
+
+        var certs = store.Certificates.Find(X509FindType.FindBySubjectName, _certSubject, false);
+        store.Close();
+
+        if (certs.Count < 1)
+            throw new Exception("No certificate found in Store!");
+        
+        var handler = new HttpClientHandler
         {
-            var config = new ConfigurationBuilder().AddJsonFile("appsettings.json").Build();
-            _baseUrl = config["BaseUrl"] ?? throw new Exception("No 'BaseUrl' specified in config!");
-        }
-
-        using var client = new HttpClient();
-        var content = new StringContent(body, Encoding.UTF8, "application/json");
-        var url = $"{_baseUrl}{endpoint}?{query}";
-
-        var response = requestMethod switch
-        {
-            RequestMethod.Get => await client.GetAsync(url),
-            RequestMethod.Post => await client.PostAsync(url, content),
-            _ => throw new ArgumentOutOfRangeException(nameof(requestMethod), requestMethod, null)
+            UseDefaultCredentials = true, // send winAuth token
+            ClientCertificateOptions = ClientCertificateOption.Manual,
+            ServerCertificateCustomValidationCallback = (_, _, _, _) => true,
         };
 
-        return await response.Content.ReadAsStringAsync();
+        handler.ClientCertificates.AddRange(certs); 
+        
+        _jwtToken = await SendRequestAsync("user/login/pc", requestMethod: RequestMethod.Get, handler: handler);
     }
 
-    public enum RequestMethod
+    private async Task<string> SendRequestAsync(string endpoint, string body = "", string query = "", RequestMethod requestMethod = RequestMethod.Post, HttpClientHandler? handler = null)
     {
-        Get = 1,
-        Post = 2
+        for (var i = 0; i < 3; i++)
+        {
+            handler ??= new HttpClientHandler();
+
+            using var client = new HttpClient(handler);
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _jwtToken);
+
+            var content = new StringContent(body, Encoding.UTF8, "application/json");
+            var url = $"{_baseUrl}{endpoint}?{query}";
+
+            var response = requestMethod switch
+            {
+                RequestMethod.Get => await client.GetAsync(url),
+                RequestMethod.Post => await client.PostAsync(url, content),
+                _ => throw new ArgumentOutOfRangeException(nameof(requestMethod), requestMethod, null)
+            };
+
+            // return on success
+            if (response.StatusCode != HttpStatusCode.Unauthorized)
+                return await response.Content.ReadAsStringAsync();
+
+            // authorize again if unauthorized
+            await Authorize();
+            await Task.Delay(500);
+        }
+
+        throw new Exception("No Permissions for this Endpoint!");
+    }
+
+    private enum RequestMethod
+    {
+        Get,
+        Post
     }
 }
