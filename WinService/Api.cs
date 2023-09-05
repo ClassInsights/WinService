@@ -26,7 +26,7 @@ public class Api
 
     public async Task<ApiModels.Computer?> GetComputerAsync(string name)
     {
-        var response = await SendRequestAsync($"computer/{name}", requestMethod: RequestMethod.Get);
+        var response = await SendRequestAsync($"computers/{name}", requestMethod: RequestMethod.Get);
         return JsonConvert.DeserializeObject<ApiModels.Computer>(response);
     }
 
