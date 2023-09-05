@@ -23,7 +23,6 @@ public class WsManager
     public async Task Start()
     {
         await Connect(_winService.Configuration["Websocket:Endpoint"] ?? "");
-
         _timer.Elapsed += async (_, _) => await SendHeartbeat();
         _timer.Start();
     }
@@ -36,6 +35,7 @@ public class WsManager
 
     private async Task Connect(string endpoint)
     {
+        _webSocket.Options.SetRequestHeader("Authorization", $"Bearer {_winService.Api.JwtToken}");
         await _webSocket.ConnectAsync(new Uri(endpoint), CancellationToken.None);
         Logger.Log("Connected to Websocket!");
     }

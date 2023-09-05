@@ -11,7 +11,7 @@ namespace WinService;
 public class Api
 {
     private readonly WinService _winService;
-    private string? _jwtToken;
+    public string? JwtToken;
 
     public Api(WinService winService)
     {
@@ -68,7 +68,7 @@ public class Api
         handler.ClientCertificates.AddRange(certs); 
         
         // impersonate current logged in user
-        _jwtToken = await WindowsIdentity.RunImpersonatedAsync(new SafeAccessTokenHandle(_winService.WinAuthToken), async () => await SendRequestAsync("user/login/pc", requestMethod: RequestMethod.Get, handler: handler));
+        JwtToken = await WindowsIdentity.RunImpersonatedAsync(new SafeAccessTokenHandle(_winService.WinAuthToken), async () => await SendRequestAsync("user/login/pc", requestMethod: RequestMethod.Get, handler: handler));
     }
 
     private async Task<string> SendRequestAsync(string endpoint, string body = "", string query = "", RequestMethod requestMethod = RequestMethod.Post, HttpClientHandler? handler = null)
@@ -82,7 +82,7 @@ public class Api
             handler ??= new HttpClientHandler();
             using var client = new HttpClient(handler);
 
-            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {_jwtToken}");
+            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {JwtToken}");
             var content = new StringContent(body, Encoding.UTF8, "application/json");
             var url = $"{baseUrl}{endpoint}?{query}";
 
