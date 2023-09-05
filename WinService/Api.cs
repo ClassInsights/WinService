@@ -1,4 +1,5 @@
 ﻿using System.Net;
+using System.Net.Http.Headers;
 using System.Security.Cryptography.X509Certificates;
 using System.Security.Principal;
 using System.Text;
@@ -44,13 +45,13 @@ public class Api
 
     public async Task Authorize()
     {
-        if (_winService.Configuration["Api:CertificateSubject"] is not { } certIssuer)
+        if (_winService.Configuration["Api:CertificateSubject"] is not { } certSubject)
             throw new Exception("Api:CertificateSubject configuration missing!");
 
         var store = new X509Store(StoreName.TrustedPublisher, StoreLocation.LocalMachine);
         store.Open(OpenFlags.ReadOnly);
 
-        var certs = store.Certificates.Find(X509FindType.FindBySubjectName, certIssuer, false);
+        var certs = store.Certificates.Find(X509FindType.FindBySubjectName, certSubject, false);
         store.Close();
 
         if (certs.Count < 1)
@@ -81,8 +82,8 @@ public class Api
 
             handler ??= new HttpClientHandler();
             using var client = new HttpClient(handler);
-
-            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {JwtToken}");
+            
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", JwtToken);
             var content = new StringContent(body, Encoding.UTF8, "application/json");
             var url = $"{baseUrl}{endpoint}?{query}";
 
