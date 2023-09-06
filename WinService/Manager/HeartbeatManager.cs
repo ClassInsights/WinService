@@ -14,32 +14,36 @@ public class HeartbeatManager
         _winService = winService;
     }
 
-    public void Start(CancellationToken token)
+    public async Task Start(CancellationToken token)
     {
+        await SendHeartbeat(token);
         var timer = new System.Timers.Timer
         {
             Interval = new Random().Next(20, 60) * 1000,
         };
-        timer.Elapsed += (_, _) => SendHeartbeats(token);
+        timer.Elapsed += async (_, _) => await SendHeartbeat(token);
         timer.Start();
     }
 
-    private async void SendHeartbeats(CancellationToken token)
+    private async Task SendHeartbeat(CancellationToken token)
     {
         try
         {
-            while (!token.IsCancellationRequested && _winService is { Computer: not null, Room: not null })
+            if (!token.IsCancellationRequested && _winService is { Computer: not null, Room: not null })
             {
-                await _winService.Api.UpdateComputer(new ApiModels.Computer
+                _winService.Computer = await _winService.Api.UpdateComputer(new ApiModels.Computer
                 (
                     ComputerId: _winService.Computer.ComputerId,
                     LastSeen: DateTime.Now,
-                    Name: _winService.Room.Name,
+#if DEBUG
+                    Name: "OG2-DV2",
+#else
+                    Name: Environment.MachineName,
+#endif
                     RoomId: _winService.Room.RoomId,
                     MacAddress: GetMacAddress(),
                     IpAddress: GetLocalIpAddress()
                 ));
-                token.WaitHandle.WaitOne(TimeSpan.FromSeconds(new Random().Next(20, 60)));
             }
         }
         catch (Exception e)
