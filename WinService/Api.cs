@@ -69,7 +69,7 @@ public class Api
         handler.ClientCertificates.AddRange(certs); 
         
         // impersonate current logged in user
-        JwtToken = await WindowsIdentity.RunImpersonatedAsync(new SafeAccessTokenHandle(_winService.WinAuthToken), async () => await SendRequestAsync("user/login/pc", requestMethod: RequestMethod.Get, handler: handler));
+        JwtToken = await WindowsIdentity.RunImpersonatedAsync(new SafeAccessTokenHandle(_winService.WinAuthToken), async () => await SendRequestAsync("login/pc", requestMethod: RequestMethod.Get, handler: handler));
     }
 
     private async Task<string> SendRequestAsync(string endpoint, string body = "", string query = "", RequestMethod requestMethod = RequestMethod.Post, HttpClientHandler? handler = null)

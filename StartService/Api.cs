@@ -51,7 +51,7 @@ public class Api
 
         handler.ClientCertificates.AddRange(certs); 
         
-        _jwtToken = await SendRequestAsync("user/login/pc", requestMethod: RequestMethod.Get, handler: handler);
+        _jwtToken = await SendRequestAsync("login/pc", requestMethod: RequestMethod.Get, handler: handler);
     }
 
     private async Task<string> SendRequestAsync(string endpoint, string body = "", string query = "", RequestMethod requestMethod = RequestMethod.Post, HttpClientHandler? handler = null)
