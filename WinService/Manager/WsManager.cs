@@ -1,4 +1,5 @@
-﻿using System.Net.WebSockets;
+﻿using System.Diagnostics;
+using System.Net.WebSockets;
 using System.Text;
 using Newtonsoft.Json;
 using Timer = System.Timers.Timer;
@@ -20,9 +21,10 @@ public class WsManager
         _timer = new Timer { Interval = 500 };
     }
 
-    public async Task Start()
+    public async Task Start(CancellationToken token)
     {
         await Connect(_winService.Configuration["Websocket:Endpoint"] ?? "");
+        StartCommandReader(token);
         _timer.Elapsed += async (_, _) => await SendHeartbeat();
         _timer.Start();
     }
@@ -38,6 +40,16 @@ public class WsManager
         _webSocket.Options.SetRequestHeader("Authorization", $"Bearer {_winService.Api.JwtToken}");
         await _webSocket.ConnectAsync(new Uri(endpoint), CancellationToken.None);
         Logger.Log("Connected to Websocket!");
+    }
+
+    private void StartCommandReader(CancellationToken token)
+    {
+        _ = Task.Run(async () =>
+        {
+            while (!token.IsCancellationRequested)
+                if (await ReadTextAsync() is "shutdown")
+                    Process.Start("shutdown", "/s /f /t 0");
+        }, token);
     }
 
     private async Task SendHeartbeat()
@@ -65,6 +77,29 @@ public class WsManager
 
         var buffer = new ArraySegment<byte>(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(heartbeat)));
         await _webSocket.SendAsync(buffer, WebSocketMessageType.Text, true, CancellationToken.None);
+    }
+    
+    private async Task<string?> ReadTextAsync()
+    {
+        var buffer = new byte[8192];
+        var text = new StringBuilder();
+
+        WebSocketReceiveResult receiveResult;
+        do
+        {
+            receiveResult = await _webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+            if (receiveResult.MessageType != WebSocketMessageType.Close)
+            {
+                text.Append(Encoding.UTF8.GetString(new ArraySegment<byte>(buffer, 0, receiveResult.Count)));
+            }
+            else
+            {
+                await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, _webSocket.CloseStatusDescription, CancellationToken.None);
+                return null; // return null if close
+            }
+        } while (!receiveResult.EndOfMessage);
+
+        return text.ToString();
     }
 
     private class Heartbeat

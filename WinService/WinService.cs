@@ -40,9 +40,8 @@ public class WinService
 #endif
         try
         {
-            _heartbeatManager.Start(token);
-            await Task.WhenAll(_shutdownManager.Start(token), ShutdownManager.CheckLifeSign(token), _wsManager.Start()); // takes endless unless service stop
             await _heartbeatManager.Start(token);
+            await Task.WhenAll(_shutdownManager.Start(token), ShutdownManager.CheckLifeSign(token), _wsManager.Start(token)); // takes endless unless service stop
         }
         catch (OperationCanceledException)
         {
