@@ -48,7 +48,7 @@ public class Api
         if (_winService.Configuration["Api:CertificateSubject"] is not { } certSubject)
             throw new Exception("Api:CertificateSubject configuration missing!");
 
-        var store = new X509Store(StoreName.TrustedPublisher, StoreLocation.LocalMachine);
+        var store = new X509Store(StoreName.My, StoreLocation.LocalMachine);
         store.Open(OpenFlags.ReadOnly);
 
         var certs = store.Certificates.Find(X509FindType.FindBySubjectName, certSubject, false);
@@ -82,8 +82,9 @@ public class Api
 
             handler ??= new HttpClientHandler();
             using var client = new HttpClient(handler);
-            
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", JwtToken);
+
+            if (JwtToken != null)
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", JwtToken);
             var content = new StringContent(body, Encoding.UTF8, "application/json");
             var url = $"{baseUrl}{endpoint}?{query}";
 
