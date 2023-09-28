@@ -1,6 +1,5 @@
 ﻿using System.Net;
 using System.Net.Http.Headers;
-using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using Newtonsoft.Json;
 using StartService.Models;
@@ -10,13 +9,11 @@ namespace StartService;
 public class Api
 {
     private readonly string _baseUrl;
-    private readonly string _certSubject;
     private string? _jwtToken;
 
-    public Api(string baseUrl, string certSubject)
+    public Api(string baseUrl)
     {
         _baseUrl = baseUrl;
-        _certSubject = certSubject;
     }
 
     public async Task<List<ApiModels.Lesson>?> GetLessonsAsync()
@@ -33,35 +30,20 @@ public class Api
 
     public async Task Authorize()
     {
-        var store = new X509Store(StoreName.TrustedPublisher, StoreLocation.LocalMachine);
-        store.Open(OpenFlags.ReadOnly);
-
-        var certs = store.Certificates.Find(X509FindType.FindBySubjectName, _certSubject, false);
-        store.Close();
-
-        if (certs.Count < 1)
-            throw new Exception("No certificate found in Store!");
-        
-        var handler = new HttpClientHandler
-        {
-            UseDefaultCredentials = true, // send winAuth token
-            ClientCertificateOptions = ClientCertificateOption.Manual,
-            ServerCertificateCustomValidationCallback = (_, _, _, _) => true,
-        };
-
-        handler.ClientCertificates.AddRange(certs); 
-        
-        _jwtToken = await SendRequestAsync("login/pc", requestMethod: RequestMethod.Get, handler: handler);
+        _jwtToken = await SendRequestAsync("login/pc", requestMethod: RequestMethod.Get);
     }
 
-    private async Task<string> SendRequestAsync(string endpoint, string body = "", string query = "", RequestMethod requestMethod = RequestMethod.Post, HttpClientHandler? handler = null)
+    private async Task<string> SendRequestAsync(string endpoint, string body = "", string query = "", RequestMethod requestMethod = RequestMethod.Post)
     {
+        using var client = new HttpClient(new HttpClientHandler
+        {
+            UseDefaultCredentials = true // send winAuth token
+        });
+        
         for (var i = 0; i < 3; i++)
         {
-            handler ??= new HttpClientHandler();
-
-            using var client = new HttpClient(handler);
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _jwtToken);
+            if (_jwtToken != null)
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _jwtToken);
 
             var content = new StringContent(body, Encoding.UTF8, "application/json");
             var url = $"{_baseUrl}{endpoint}?{query}";

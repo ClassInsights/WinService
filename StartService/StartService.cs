@@ -11,10 +11,10 @@ internal static class StartService
         try
         {
             var config = new ConfigurationBuilder().AddJsonFile("appsettings.json").Build();
-            if (config["BaseUrl"] is not { } baseUrl || config["CertificateSubject"] is not { } certSubject)
-                throw new Exception("'BaseUrl' or 'CertificateSubject' missing in config!");
+            if (config["BaseUrl"] is not { } baseUrl)
+                throw new Exception("'BaseUrl' is missing in config!");
             
-            var api = new Api(baseUrl, certSubject);
+            var api = new Api(baseUrl);
             await api.Authorize();
             
             while (!token.IsCancellationRequested)
