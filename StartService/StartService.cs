@@ -23,7 +23,7 @@ internal static class StartService
                 var lessons = await api.GetLessonsAsync();
 
                 // if no lessons, recheck every hour
-                if (lessons is not { Count: not 0 })
+                if (lessons is null or { Count: <= 0 })
                 {
                     await Task.Delay(3600000, token);
                     continue;
@@ -34,7 +34,7 @@ internal static class StartService
                 
                 // wait for next lesson start, but at least 2 minutes
                 var startTime = GetNearestTime(startTimes);
-                await Task.Delay((int) Math.Max(startTime.TotalMilliseconds - 5000, 120000), token);
+                await Task.Delay((int) Math.Max(startTime.TotalMilliseconds - 120000, 120000), token);
 
                 var comingLessons = lessons.Where(x => x.StartTime > DateTime.Now.AddMinutes(-5) && x.StartTime < DateTime.Now.AddMinutes(5)).Select(x => x.RoomId).Distinct().ToList();
 
