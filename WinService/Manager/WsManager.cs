@@ -47,8 +47,19 @@ public class WsManager
         _ = Task.Run(async () =>
         {
             while (!token.IsCancellationRequested)
-                if (await ReadTextAsync() is "shutdown")
-                    Process.Start("shutdown", "/s /f /t 0");
+                switch (await ReadTextAsync())
+                {
+                    case "shutdown":
+                        Process.Start("shutdown", "/s /f /t 0");
+                        break;
+                    case "restart":
+                        Process.Start("shutdown", "/r /f /t 0");
+                        break;
+                    case "logoff":
+                        Process.Start("shutdown", "/l");
+                        break;
+                }
+            
         }, token);
     }
 
