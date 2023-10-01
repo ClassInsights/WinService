@@ -24,7 +24,7 @@ public class Api
 
     public async Task<List<ApiModels.Computer>?> GetComputersAsync(int room)
     {
-        var response = await SendRequestAsync($"rooms/{room}", requestMethod: RequestMethod.Get);
+        var response = await SendRequestAsync($"rooms/{room}/computers", requestMethod: RequestMethod.Get);
         return JsonConvert.DeserializeObject<List<ApiModels.Computer>>(response);
     }
 
@@ -54,7 +54,6 @@ public class Api
                 RequestMethod.Post => await client.PostAsync(url, content),
                 _ => throw new ArgumentOutOfRangeException(nameof(requestMethod), requestMethod, null)
             };
-
             // return on success
             if (response.StatusCode != HttpStatusCode.Unauthorized)
                 return await response.Content.ReadAsStringAsync();
