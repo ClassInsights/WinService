@@ -6,8 +6,8 @@ namespace WinService.Manager;
 public class UserManager
 {
     private readonly WinService _winService;
-    private string? _userName;
     private Timer? _timer;
+    private string? _userName;
 
     public UserManager(WinService winService)
     {
@@ -28,10 +28,10 @@ public class UserManager
         _timer.Start();
     }
 
-    public async Task UpdateWinAuthToken(CancellationToken token)
+    private async Task UpdateWinAuthToken(CancellationToken token)
     {
 #if DEBUG
-        const string name = "PGI\\julian";
+        const string name = "tirona.loc\\julian";
 #else
         if (ShutdownManager.GetLoggedInUsername() is not { } name)
         {
@@ -43,7 +43,7 @@ public class UserManager
         {
             // check if last access token is from currently logged in user
             if (name == _userName) return;
-            
+
             var accessToken = IntPtr.Zero;
             Win32Api.GetSessionUserToken(ref accessToken);
 

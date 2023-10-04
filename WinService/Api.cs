@@ -33,13 +33,15 @@ public class Api
 
     public async Task<List<ApiModels.Lesson>> GetLessonsAsync(int room)
     {
-        var response = await SendRequestAsync($"rooms/{room}", query: "search=lessons", requestMethod: RequestMethod.Get);
+        var response =
+            await SendRequestAsync($"rooms/{room}", query: "search=lessons", requestMethod: RequestMethod.Get);
         return JsonConvert.DeserializeObject<List<ApiModels.Lesson>>(response) ?? new List<ApiModels.Lesson>();
     }
 
     public async Task<ApiModels.Computer?> UpdateComputer(ApiModels.Computer request)
     {
-        var response = await SendRequestAsync("computers", JsonConvert.SerializeObject(request), requestMethod: RequestMethod.Post);
+        var response = await SendRequestAsync("computers", JsonConvert.SerializeObject(request),
+            requestMethod: RequestMethod.Post);
         return JsonConvert.DeserializeObject<ApiModels.Computer>(response);
     }
 
@@ -56,7 +58,7 @@ public class Api
 
         if (certs.Count < 1)
             throw new Exception("No certificate found in Store!");
-        
+
         var handler = new HttpClientHandler
         {
             UseDefaultCredentials = true, // send winAuth token
@@ -66,13 +68,15 @@ public class Api
 #endif
         };
 
-        handler.ClientCertificates.AddRange(certs); 
-        
+        handler.ClientCertificates.AddRange(certs);
+
         // impersonate current logged in user
-        JwtToken = await WindowsIdentity.RunImpersonatedAsync(new SafeAccessTokenHandle(_winService.WinAuthToken), async () => await SendRequestAsync("login/pc", requestMethod: RequestMethod.Get, handler: handler));
+        JwtToken = await WindowsIdentity.RunImpersonatedAsync(new SafeAccessTokenHandle(_winService.WinAuthToken),
+            async () => await SendRequestAsync("login/pc", requestMethod: RequestMethod.Get, handler: handler));
     }
 
-    private async Task<string> SendRequestAsync(string endpoint, string body = "", string query = "", RequestMethod requestMethod = RequestMethod.Post, HttpClientHandler? handler = null)
+    private async Task<string> SendRequestAsync(string endpoint, string body = "", string query = "",
+        RequestMethod requestMethod = RequestMethod.Post, HttpClientHandler? handler = null)
     {
         // try 3 times to access endpoint
         for (var i = 0; i < 3; i++)
@@ -97,7 +101,7 @@ public class Api
 
             if (response.StatusCode != HttpStatusCode.Unauthorized)
                 return await response.Content.ReadAsStringAsync();
-            
+
             // if status code 401, authorize again
             await Authorize();
             await Task.Delay(500);

@@ -8,10 +8,10 @@ namespace WinService.Manager;
 
 public class WsManager
 {
-    private readonly WinService _winService;
-    private readonly ClientWebSocket _webSocket;
     private readonly EnergyManager _energyManager;
     private readonly Timer _timer;
+    private readonly ClientWebSocket _webSocket;
+    private readonly WinService _winService;
 
     public WsManager(WinService winService)
     {
@@ -23,7 +23,10 @@ public class WsManager
 
     public async Task Start(CancellationToken token)
     {
-        await Connect(_winService.Configuration["Websocket:Endpoint"] ?? "");
+        if (_winService.Configuration["Websocket:Endpoint"] is not { } endpoint)
+            throw new Exception("Websocket:Endpoint is missing in appsettings.json!");
+
+        await Connect(endpoint);
         StartCommandReader(token);
         _timer.Elapsed += async (_, _) => await SendHeartbeat();
         _timer.Start();
@@ -31,8 +34,8 @@ public class WsManager
 
     public async Task Stop()
     {
-        await _webSocket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
         _timer.Stop();
+        await _webSocket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
     }
 
     private async Task Connect(string endpoint)
@@ -47,7 +50,10 @@ public class WsManager
         _ = Task.Run(async () =>
         {
             while (!token.IsCancellationRequested)
-                switch (await ReadTextAsync())
+            {
+                var command = await ReadTextAsync();
+                Logger.Log($"Received '{command}' command!");
+                switch (command)
                 {
                     case "shutdown":
                         Process.Start("shutdown", "/s /f /t 0");
@@ -59,8 +65,9 @@ public class WsManager
                         Process.Start("shutdown", "/l");
                         break;
                 }
-            
+            }
         }, token);
+        Logger.Log("Started Websocket Command Reader!");
     }
 
     private async Task SendHeartbeat()
@@ -69,27 +76,17 @@ public class WsManager
             return;
 
         _energyManager.UpdateValues();
-        var heartbeat = new Heartbeat
-        {
-            ComputerId = _winService.Computer.ComputerId,
-            Name = Environment.MachineName,
-            Type = "Heartbeat",
-            Room = _winService.Room.RoomId,
-            UpTime = DateTime.Now.AddMilliseconds(-1 * Environment.TickCount64),
-            Data = new Data
-            {
-                Power = _energyManager.GetPowerUsage(),
-                CpuUsage = _energyManager.GetCpuUsages(),
-                RamUsage = _energyManager.GetRamUsage(),
-                DiskUsages = _energyManager.GetDiskUsages(),
-                EthernetUsages = _energyManager.GetEthernetUsages()
-            }
-        };
+        var heartbeat = new Heartbeat(Name: Environment.MachineName, Type: "Heartbeat", Room: _winService.Room.RoomId,
+            UpTime: DateTime.Now.AddMilliseconds(-1 * Environment.TickCount64),
+            ComputerId: _winService.Computer.ComputerId,
+            Data: new Data(CpuUsage: _energyManager.GetCpuUsages(),
+                Power: _energyManager.GetPowerUsage(), EthernetUsages: _energyManager.GetEthernetUsages(),
+                RamUsage: _energyManager.GetRamUsage(), DiskUsages: _energyManager.GetDiskUsages()));
 
         var buffer = new ArraySegment<byte>(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(heartbeat)));
         await _webSocket.SendAsync(buffer, WebSocketMessageType.Text, true, CancellationToken.None);
     }
-    
+
     private async Task<string?> ReadTextAsync()
     {
         var buffer = new byte[8192];
@@ -105,7 +102,8 @@ public class WsManager
             }
             else
             {
-                await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, _webSocket.CloseStatusDescription, CancellationToken.None);
+                await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, _webSocket.CloseStatusDescription,
+                    CancellationToken.None);
                 return null; // return null if close
             }
         } while (!receiveResult.EndOfMessage);
@@ -113,22 +111,8 @@ public class WsManager
         return text.ToString();
     }
 
-    private class Heartbeat
-    {
-        public int ComputerId { get; set; }
-        public string Type { get; set; } = null!;
-        public string Name { get; set; } = null!;
-        public int Room { get; set; }
-        public DateTime UpTime { get; set; }
-        public Data? Data { get; set; }
-    }
+    private record Heartbeat(int ComputerId, string Type, string Name, int Room, DateTime UpTime, Data? Data);
 
-    private class Data
-    {
-        public float Power { get; set; }
-        public float RamUsage { get; set; }
-        public List<float>? CpuUsage { get; set; }
-        public List<float>? DiskUsages { get; set; }
-        public List<Dictionary<string, float>>? EthernetUsages { get; set; }
-    }
+    private record Data(float Power, float RamUsage, List<float>? CpuUsage, List<float>? DiskUsages,
+        List<Dictionary<string, float>>? EthernetUsages);
 }

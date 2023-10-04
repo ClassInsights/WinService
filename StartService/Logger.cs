@@ -1,7 +1,7 @@
 ﻿using System.Reflection;
 using System.Runtime.InteropServices;
 
-namespace WinService;
+namespace StartService;
 
 public class Logger
 {

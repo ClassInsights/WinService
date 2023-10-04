@@ -6,14 +6,17 @@ namespace WinService;
 
 public class WinService
 {
-    private readonly WsManager _wsManager;
-    private readonly ShutdownManager _shutdownManager;
     private readonly HeartbeatManager _heartbeatManager;
+    private readonly ShutdownManager _shutdownManager;
     private readonly UserManager _userManager;
+    private readonly WsManager _wsManager;
     public readonly Api Api;
-    public readonly IConfigurationRoot Configuration = new ConfigurationBuilder().AddJsonFile("appsettings.json").AddEnvironmentVariables().Build();
-    public ApiModels.Room? Room;
+
+    public readonly IConfigurationRoot Configuration =
+        new ConfigurationBuilder().AddJsonFile("appsettings.json").AddEnvironmentVariables().Build();
+
     public ApiModels.Computer? Computer;
+    public ApiModels.Room? Room;
     public IntPtr WinAuthToken = IntPtr.Zero;
 
     public WinService()
@@ -41,7 +44,8 @@ public class WinService
         try
         {
             await _heartbeatManager.Start(token);
-            await Task.WhenAll(_shutdownManager.Start(token), ShutdownManager.CheckLifeSign(token), _wsManager.Start(token)); // takes endless unless service stop
+            await Task.WhenAll(_shutdownManager.Start(token), ShutdownManager.CheckLifeSign(token),
+                _wsManager.Start(token)); // takes endless unless service stop
         }
         catch (OperationCanceledException)
         {

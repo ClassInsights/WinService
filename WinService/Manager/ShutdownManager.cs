@@ -6,9 +6,13 @@ namespace WinService.Manager;
 
 public class ShutdownManager
 {
-    private readonly WinService _winService;
     private const int BufferMinutes = 20; // time until no lessons should be to shutdown
-    private const int NoLessonsUseTime = 50; // time how long pc should be usable after all lessons and max delay when recheck for lesson should be
+
+    private const int
+        NoLessonsUseTime =
+            50; // time how long pc should be usable after all lessons and max delay when recheck for lesson should be
+
+    private readonly WinService _winService;
     private List<ApiModels.Lesson> _lessons = new();
 
 
@@ -25,7 +29,7 @@ public class ShutdownManager
     }
 
     /// <summary>
-    /// Shutdown PC after 7 minutes if no user is logged in
+    ///     Shutdown PC after 7 minutes if no user is logged in
     /// </summary>
     /// <param name="token"></param>
     /// <returns></returns>
@@ -38,7 +42,7 @@ public class ShutdownManager
     }
 
     /// <summary>
-    /// Checks if shutdown is ready and sends shutdown to client
+    ///     Checks if shutdown is ready and sends shutdown to client
     /// </summary>
     /// <param name="token"></param>
     private async Task CheckShutdownLoop(CancellationToken token)
@@ -47,7 +51,6 @@ public class ShutdownManager
 
         var loopStart = DateTime.Now;
         while (!token.IsCancellationRequested)
-        {
             try
             {
                 // wait until current lesson is over
@@ -81,17 +84,29 @@ public class ShutdownManager
             {
                 Logger.Error($"Unhandled {e.GetType()}, Message: {e.Message}, Stacktrace : {e.StackTrace}");
             }
-        }
     }
 
 
     /// <summary>
-    /// Get information about start and end time of <value>_lessons</value>
+    ///     Get information about start and end time of
+    ///     <value>_lessons</value>
     /// </summary>
     /// <returns>
-    /// <br>A Dictionary where <value>endTime</value> contains the duration until the current lesson ends and where <value>startTime</value> contains the duration until next lesson starts.</br>
-    /// <br>Note that <value>endTime</value> will be set <value>NoLessonsUseTime</value> minutes if all lessons are over</br>
-    /// <br>endTime has a maximum of <value>NoLessonsUseTime</value></br>
+    ///     <br>A Dictionary where
+    ///         <value>endTime</value>
+    ///         contains the duration until the current lesson ends and where
+    ///         <value>startTime</value>
+    ///         contains the duration until next lesson starts.
+    ///     </br>
+    ///     <br>Note that
+    ///         <value>endTime</value>
+    ///         will be set
+    ///         <value>NoLessonsUseTime</value>
+    ///         minutes if all lessons are over
+    ///     </br>
+    ///     <br>endTime has a maximum of
+    ///         <value>NoLessonsUseTime</value>
+    ///     </br>
     /// </returns>
     private Dictionary<string, int> GetNextLessonInfo()
     {
@@ -104,19 +119,23 @@ public class ShutdownManager
         return new Dictionary<string, int>
         {
             ["startTime"] = (int)closestStartTime.TotalMilliseconds,
-            ["endTime"] = (int)Math.Clamp(closestEndTime.TotalMilliseconds, 60000, NoLessonsUseTime * 60000) // wait for a maximum of NoLessonsUseTime for recheck (prevent infinity waiting after user aborts shutdown)
+            ["endTime"] =
+                (int)Math.Clamp(closestEndTime.TotalMilliseconds, 60000,
+                    NoLessonsUseTime *
+                    60000) // wait for a maximum of NoLessonsUseTime for recheck (prevent infinity waiting after user aborts shutdown)
         };
     }
 
 
     // https://stackoverflow.com/a/1757221
     /// <summary>
-    /// Get nearest time of list.
+    ///     Get nearest time of list.
     /// </summary>
     /// <param name="times">IEnumerable from which the nearest time should be returned</param>
     /// <param name="date">TimeSpan from where the nearest time should be calculated</param>
     /// <returns>
-    /// Returns TimeSpan which represents the time until the nearest time in IEnumerable <value>times</value>
+    ///     Returns TimeSpan which represents the time until the nearest time in IEnumerable
+    ///     <value>times</value>
     /// </returns>
     private static TimeSpan GetNearestTime(IEnumerable<TimeSpan> times, TimeSpan? date = null)
     {
@@ -130,8 +149,8 @@ public class ShutdownManager
     }
 
     /// <summary>
-    /// Sends shutdown to client via pipe
-    /// If no user is logged in it shuts down the pc immediately
+    ///     Sends shutdown to client via pipe
+    ///     If no user is logged in it shuts down the pc immediately
     /// </summary>
     /// <param name="token"></param>
     /// <returns></returns>

@@ -5,6 +5,50 @@ namespace WinService;
 // https://github.com/murrayju/CreateProcessAsUser/blob/master/ProcessExtensions/ProcessExtensions.cs
 public class Win32Api
 {
+    // Gets the user token from the currently active session
+    public static bool GetSessionUserToken(ref IntPtr phUserToken)
+    {
+        var bResult = false;
+        var hImpersonationToken = IntPtr.Zero;
+        var activeSessionId = INVALID_SESSION_ID;
+        var pSessionInfo = IntPtr.Zero;
+        var sessionCount = 0;
+
+        // Get a handle to the user access token for the current active session.
+        if (WTSEnumerateSessions(WTS_CURRENT_SERVER_HANDLE, 0, 1, ref pSessionInfo, ref sessionCount) != 0)
+        {
+            var arrayElementSize = Marshal.SizeOf(typeof(WTS_SESSION_INFO));
+            var current = pSessionInfo;
+
+            for (var i = 0; i < sessionCount; i++)
+            {
+                if (Marshal.PtrToStructure(current, typeof(WTS_SESSION_INFO)) is not WTS_SESSION_INFO si)
+                    continue;
+
+                current += arrayElementSize;
+
+                if (si is { State: WTS_CONNECTSTATE_CLASS.WTSActive })
+                    activeSessionId = si.SessionID;
+            }
+        }
+
+        // If enumerating did not work, fall back to the old method
+        if (activeSessionId == INVALID_SESSION_ID)
+            activeSessionId = WTSGetActiveConsoleSessionId();
+
+        if (WTSQueryUserToken(activeSessionId, ref hImpersonationToken) == 0)
+            return bResult;
+
+        // Convert the impersonation token to a primary token
+        bResult = DuplicateTokenEx(hImpersonationToken, 0, IntPtr.Zero,
+            (int)SECURITY_IMPERSONATION_LEVEL.SecurityImpersonation, (int)TOKEN_TYPE.TokenImpersonation,
+            ref phUserToken);
+
+        CloseHandle(hImpersonationToken);
+
+        return bResult;
+    }
+
     #region Win32 Constants
 
     private const int CREATE_UNICODE_ENVIRONMENT = 0x00000400;
@@ -19,17 +63,18 @@ public class Win32Api
 
     #region DllImports
 
-    [DllImport("advapi32.dll", EntryPoint = "CreateProcessAsUser", SetLastError = true, CharSet = CharSet.Ansi, CallingConvention = CallingConvention.StdCall)]
+    [DllImport("advapi32.dll", EntryPoint = "CreateProcessAsUser", SetLastError = true, CharSet = CharSet.Ansi,
+        CallingConvention = CallingConvention.StdCall)]
     private static extern bool CreateProcessAsUser(
         IntPtr hToken,
-        String lpApplicationName,
-        String lpCommandLine,
+        string lpApplicationName,
+        string lpCommandLine,
         IntPtr lpProcessAttributes,
         IntPtr lpThreadAttributes,
         bool bInheritHandle,
         uint dwCreationFlags,
         IntPtr lpEnvironment,
-        String lpCurrentDirectory,
+        string lpCurrentDirectory,
         ref STARTUPINFO lpStartupInfo,
         out PROCESS_INFORMATION lpProcessInformation);
 
@@ -116,7 +161,7 @@ public class Win32Api
         SecurityAnonymous = 0,
         SecurityIdentification = 1,
         SecurityImpersonation = 2,
-        SecurityDelegation = 3,
+        SecurityDelegation = 3
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -153,53 +198,10 @@ public class Win32Api
     {
         public readonly UInt32 SessionID;
 
-        [MarshalAs(UnmanagedType.LPStr)]
-        public readonly String pWinStationName;
+        [MarshalAs(UnmanagedType.LPStr)] public readonly String pWinStationName;
 
         public readonly WTS_CONNECTSTATE_CLASS State;
     }
 
     #endregion
-
-    // Gets the user token from the currently active session
-    public static bool GetSessionUserToken(ref IntPtr phUserToken)
-    {
-        var bResult = false;
-        var hImpersonationToken = IntPtr.Zero;
-        var activeSessionId = INVALID_SESSION_ID;
-        var pSessionInfo = IntPtr.Zero;
-        var sessionCount = 0;
-
-        // Get a handle to the user access token for the current active session.
-        if (WTSEnumerateSessions(WTS_CURRENT_SERVER_HANDLE, 0, 1, ref pSessionInfo, ref sessionCount) != 0)
-        {
-            var arrayElementSize = Marshal.SizeOf(typeof(WTS_SESSION_INFO));
-            var current = pSessionInfo;
-
-            for (var i = 0; i < sessionCount; i++)
-            {
-                if (Marshal.PtrToStructure(current, typeof(WTS_SESSION_INFO)) is not WTS_SESSION_INFO si)
-                    continue;
-                
-                current += arrayElementSize;
-
-                if (si is {State: WTS_CONNECTSTATE_CLASS.WTSActive })
-                    activeSessionId = si.SessionID;
-            }
-        }
-
-        // If enumerating did not work, fall back to the old method
-        if (activeSessionId == INVALID_SESSION_ID)
-            activeSessionId = WTSGetActiveConsoleSessionId();
-
-        if (WTSQueryUserToken(activeSessionId, ref hImpersonationToken) == 0)
-            return bResult;
-        
-        // Convert the impersonation token to a primary token
-        bResult = DuplicateTokenEx(hImpersonationToken, 0, IntPtr.Zero, (int)SECURITY_IMPERSONATION_LEVEL.SecurityImpersonation, (int)TOKEN_TYPE.TokenImpersonation, ref phUserToken);
-
-        CloseHandle(hImpersonationToken);
-
-        return bResult;
-    }
 }

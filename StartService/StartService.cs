@@ -1,6 +1,7 @@
 ﻿using System.Net;
 using System.Net.NetworkInformation;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace StartService;
 
@@ -13,10 +14,11 @@ internal static class StartService
             var config = new ConfigurationBuilder().AddJsonFile("appsettings.json").Build();
             if (config["BaseUrl"] is not { } baseUrl)
                 throw new Exception("'BaseUrl' is missing in config!");
-            
+
+            Logger.Log("Start StartService!");
             var api = new Api(baseUrl);
             await api.Authorize();
-            
+
             while (!token.IsCancellationRequested)
             {
                 // retrieve lessons
@@ -25,18 +27,21 @@ internal static class StartService
                 // if no lessons, recheck every hour
                 if (lessons is null or { Count: <= 0 })
                 {
+                    Logger.Debug("No lessons found! Sleep for an hour ...");
                     await Task.Delay(3600000, token);
                     continue;
                 }
 
                 // get all start times
                 var startTimes = lessons.Select(x => x.StartTime.TimeOfDay).Distinct().ToList();
-                
+
                 // wait for next lesson start, but at least 2 minutes
                 var startTime = GetNearestTime(startTimes);
                 await Task.Delay((int) Math.Max(startTime.TotalMilliseconds - 120000, 120000), token);
 
-                var comingLessons = lessons.Where(x => x.StartTime > DateTime.Now.AddMinutes(-5) && x.StartTime < DateTime.Now.AddMinutes(5)).Select(x => x.RoomId).Distinct().ToList();
+                var comingLessons = lessons
+                    .Where(x => x.StartTime > DateTime.Now.AddMinutes(-5) && x.StartTime < DateTime.Now.AddMinutes(5))
+                    .Select(x => x.RoomId).Distinct().ToList();
 
                 foreach (var roomId in comingLessons)
                 {
@@ -46,13 +51,21 @@ internal static class StartService
 
                     foreach (var computer in computers)
                         if (PhysicalAddress.TryParse(computer.MacAddress, out var address))
+                        {
+                            Logger.Debug($"Wake {computer.Name}!");
                             await address.SendWolAsync();
+                        }
                 }
             }
         }
         catch (OperationCanceledException)
         {
-            // ignore
+            Logger.Log("Service stopped!");
+        }
+        catch (Exception e)
+        {
+            Logger.Error(e.Message);
+            if (e.StackTrace != null) Logger.Error(e.StackTrace);
         }
     }
 

@@ -6,7 +6,8 @@ public class ApiModels
 
     public record Lesson(int LessonId, int RoomId, int SubjectId, int ClassId, DateTime StartTime, DateTime EndTime);
 
-    public record Computer(int ComputerId, int RoomId, string Name, string MacAddress, string IpAddress, DateTime LastSeen);
+    public record Computer(int ComputerId, int RoomId, string Name, string MacAddress, string IpAddress,
+        DateTime LastSeen);
 
     public record Room(int RoomId, string Name, string LongName);
 }

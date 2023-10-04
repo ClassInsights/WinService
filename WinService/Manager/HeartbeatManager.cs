@@ -1,7 +1,8 @@
-﻿using System.Net.NetworkInformation;
+﻿using System.Net;
+using System.Net.NetworkInformation;
 using System.Net.Sockets;
-using System.Net;
 using WinService.Models;
+using Timer = System.Timers.Timer;
 
 namespace WinService.Manager;
 
@@ -17,9 +18,9 @@ public class HeartbeatManager
     public async Task Start(CancellationToken token)
     {
         await SendHeartbeat(token);
-        var timer = new System.Timers.Timer
+        var timer = new Timer
         {
-            Interval = new Random().Next(20, 60) * 1000,
+            Interval = new Random().Next(20, 60) * 1000
         };
         timer.Elapsed += async (_, _) => await SendHeartbeat(token);
         timer.Start();
@@ -30,10 +31,9 @@ public class HeartbeatManager
         try
         {
             if (!token.IsCancellationRequested && _winService is { Computer: not null, Room: not null })
-            {
                 _winService.Computer = await _winService.Api.UpdateComputer(new ApiModels.Computer
                 (
-                    ComputerId: _winService.Computer.ComputerId,
+                    _winService.Computer.ComputerId,
                     LastSeen: DateTime.Now,
 #if DEBUG
                     Name: "OG2-DV2",
@@ -44,7 +44,6 @@ public class HeartbeatManager
                     MacAddress: GetMacAddress(),
                     IpAddress: GetLocalIpAddress()
                 ));
-            }
         }
         catch (Exception e)
         {
@@ -58,12 +57,8 @@ public class HeartbeatManager
     {
         var host = Dns.GetHostEntry(Dns.GetHostName());
         foreach (var ip in host.AddressList)
-        {
             if (ip.AddressFamily == AddressFamily.InterNetwork)
-            {
                 return ip.ToString();
-            }
-        }
         throw new Exception("No network adapters with an IPv4 address in the system!");
     }
 
@@ -72,7 +67,9 @@ public class HeartbeatManager
     {
         return NetworkInterface
             .GetAllNetworkInterfaces()
-            .Where(nic => nic.OperationalStatus == OperationalStatus.Up && nic.NetworkInterfaceType != NetworkInterfaceType.Loopback)
+            .Where(nic =>
+                nic.OperationalStatus == OperationalStatus.Up &&
+                nic.NetworkInterfaceType != NetworkInterfaceType.Loopback)
             .Select(nic => nic.GetPhysicalAddress().ToString())
             .FirstOrDefault() ?? string.Empty;
     }
