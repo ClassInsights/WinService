@@ -55,7 +55,7 @@ public class Api
                 _ => throw new ArgumentOutOfRangeException(nameof(requestMethod), requestMethod, null)
             };
             // return on success
-            if (response.StatusCode != HttpStatusCode.Unauthorized)
+            if (response.IsSuccessStatusCode)
                 return await response.Content.ReadAsStringAsync();
 
             // authorize again if unauthorized
