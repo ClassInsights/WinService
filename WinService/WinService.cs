@@ -17,6 +17,7 @@ public class WinService
 
     public ApiModels.Computer? Computer;
     public ApiModels.Room? Room;
+
     public IntPtr WinAuthToken = IntPtr.Zero;
 
     public WinService()
@@ -41,6 +42,11 @@ public class WinService
         Room = await Api.GetRoomAsync(Environment.MachineName);
         Computer = await Api.GetComputerAsync(Environment.MachineName);
 #endif
+        if (Computer == null || Room == null)
+        {
+            Logger.Error("Failed to retrieve Room or Computer objects!");
+            return;
+        }
         try
         {
             await _heartbeatManager.Start(token);
