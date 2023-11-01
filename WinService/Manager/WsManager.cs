@@ -10,8 +10,8 @@ public class WsManager
 {
     private readonly EnergyManager _energyManager;
     private readonly Timer _timer;
-    private readonly ClientWebSocket _webSocket;
     private readonly WinService _winService;
+    private ClientWebSocket _webSocket;
 
     public WsManager(WinService winService)
     {
@@ -26,16 +26,40 @@ public class WsManager
         if (_winService.Configuration["Websocket:Endpoint"] is not { } endpoint)
             throw new Exception("Websocket:Endpoint is missing in appsettings.json!");
 
-        await Connect(endpoint);
-        StartCommandReader(token);
-        _timer.Elapsed += async (_, _) => await SendHeartbeat();
-        _timer.Start();
+        try
+        {
+            await Connect(endpoint);
+            StartCommandReader(token);
+            _timer.Elapsed += async (_, _) => await SendHeartbeat();
+            _timer.Start();
+        }
+        catch (Exception e)
+        {
+            Logger.Error($"Error occured in WsManager: {e.Message}");
+            await Task.Delay(5000, token);
+            await Reconnect(token);
+        }
+    }
+
+    private async Task Reconnect(CancellationToken token)
+    {
+        Logger.Log("Reconnecting WebSocket ...");
+        await Stop();
+        _webSocket = new ClientWebSocket();
+        await Start(token);
     }
 
     public async Task Stop()
     {
         _timer.Stop();
-        await _webSocket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
+        await Close();
+        _webSocket.Abort();
+    }
+
+    private async Task Close()
+    {
+        if(_webSocket.State is not WebSocketState.Closed and not WebSocketState.Aborted)
+            await _webSocket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
     }
 
     private async Task Connect(string endpoint)
@@ -49,22 +73,31 @@ public class WsManager
     {
         _ = Task.Run(async () =>
         {
-            while (!token.IsCancellationRequested)
+            try
             {
-                var command = await ReadTextAsync();
-                Logger.Log($"Received '{command}' command!");
-                switch (command)
+                while (!token.IsCancellationRequested)
                 {
-                    case "shutdown":
-                        Process.Start("shutdown", "/s /f /t 0");
-                        break;
-                    case "restart":
-                        Process.Start("shutdown", "/r /f /t 0");
-                        break;
-                    case "logoff":
-                        Process.Start("shutdown", "/l");
-                        break;
+                    var command = await ReadTextAsync();
+                    Logger.Log($"Received '{command}' command!");
+                    switch (command)
+                    {
+                        case "shutdown":
+                            Process.Start("shutdown", "/s /f /t 0");
+                            break;
+                        case "restart":
+                            Process.Start("shutdown", "/r /f /t 0");
+                            break;
+                        case "logoff":
+                            Process.Start("shutdown", "/l");
+                            break;
+                    }
                 }
+            }
+            catch (Exception e)
+            {
+                Logger.Error($"Error in CommandReader: {e.Message}");
+                await Task.Delay(5000, token);
+                await Reconnect(token);
             }
         }, token);
         Logger.Log("Started Websocket Command Reader!");
@@ -74,17 +107,26 @@ public class WsManager
     {
         if (_winService is not { Computer: not null, Room: not null })
             return;
+        
+        if (_webSocket.State != WebSocketState.Open) return;
 
-        _energyManager.UpdateValues();
-        var heartbeat = new Heartbeat(Name: Environment.MachineName, Type: "Heartbeat", Room: _winService.Room.RoomId,
-            UpTime: DateTime.Now.AddMilliseconds(-1 * Environment.TickCount64),
-            ComputerId: _winService.Computer.ComputerId,
-            Data: new Data(CpuUsage: _energyManager.GetCpuUsages(),
-                Power: _energyManager.GetPowerUsage(), EthernetUsages: _energyManager.GetEthernetUsages(),
-                RamUsage: _energyManager.GetRamUsage(), DiskUsages: _energyManager.GetDiskUsages()));
+        try
+        {
+            _energyManager.UpdateValues();
+            var heartbeat = new Heartbeat(Name: Environment.MachineName, Type: "Heartbeat", Room: _winService.Room.RoomId,
+                UpTime: DateTime.Now.AddMilliseconds(-1 * Environment.TickCount64),
+                ComputerId: _winService.Computer.ComputerId,
+                Data: new Data(CpuUsage: _energyManager.GetCpuUsages(),
+                    Power: _energyManager.GetPowerUsage(), EthernetUsages: _energyManager.GetEthernetUsages(),
+                    RamUsage: _energyManager.GetRamUsage(), DiskUsages: _energyManager.GetDiskUsages()));
 
-        var buffer = new ArraySegment<byte>(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(heartbeat)));
-        await _webSocket.SendAsync(buffer, WebSocketMessageType.Text, true, CancellationToken.None);
+            var buffer = new ArraySegment<byte>(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(heartbeat)));
+            await _webSocket.SendAsync(buffer, WebSocketMessageType.Text, true, CancellationToken.None);
+        }
+        catch (Exception e)
+        {
+            Logger.Error($"Error while sending Heartbeat: {e.Message}");
+        }
     }
 
     private async Task<string?> ReadTextAsync()
