@@ -33,8 +33,7 @@ public class Api
 
     public async Task<List<ApiModels.Lesson>> GetLessonsAsync(int room)
     {
-        var response =
-            await SendRequestAsync($"rooms/{room}", query: "search=lessons", requestMethod: RequestMethod.Get);
+        var response = await SendRequestAsync($"rooms/{room}/lessons", requestMethod: RequestMethod.Get);
         return JsonConvert.DeserializeObject<List<ApiModels.Lesson>>(response) ?? new List<ApiModels.Lesson>();
     }
 
