@@ -30,6 +30,7 @@ public class Api
 
     public async Task Authorize()
     {
+        _jwtToken = null;
         _jwtToken = await SendRequestAsync("login/pc", requestMethod: RequestMethod.Get);
     }
 
