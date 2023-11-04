@@ -19,13 +19,13 @@ public class Api
     public async Task<List<ApiModels.Lesson>?> GetLessonsAsync()
     {
         var response = await SendRequestAsync("lessons", requestMethod: RequestMethod.Get);
-        return JsonConvert.DeserializeObject<List<ApiModels.Lesson>>(response);
+        return JsonConvert.DeserializeObject<List<ApiModels.Lesson>?>(response);
     }
 
     public async Task<List<ApiModels.Computer>?> GetComputersAsync(int room)
     {
         var response = await SendRequestAsync($"rooms/{room}/computers", requestMethod: RequestMethod.Get);
-        return JsonConvert.DeserializeObject<List<ApiModels.Computer>>(response);
+        return JsonConvert.DeserializeObject<List<ApiModels.Computer>?>(response);
     }
 
     public async Task Authorize()
@@ -39,7 +39,8 @@ public class Api
         {
             UseDefaultCredentials = true // send winAuth token
         });
-        
+
+        HttpStatusCode? statusCode = null;
         for (var i = 0; i < 3; i++)
         {
             if (_jwtToken != null)
@@ -58,12 +59,14 @@ public class Api
             if (response.IsSuccessStatusCode)
                 return await response.Content.ReadAsStringAsync();
 
+            statusCode = response.StatusCode;
             // authorize again if unauthorized
             await Authorize();
-            await Task.Delay(500);
+            await Task.Delay(i * 2500);
         }
 
-        throw new Exception("No Permissions for this Endpoint!");
+        Logger.Error($"Failed to retrieve information from '{endpoint}', StatusCode: {statusCode}!");
+        return string.Empty;
     }
 
     private enum RequestMethod
