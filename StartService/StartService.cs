@@ -64,7 +64,12 @@ internal static class StartService
         catch (Exception e)
         {
             Logger.Error(e.Message);
-            if (e.StackTrace != null) Logger.Error(e.StackTrace);
+            if (e.StackTrace != null)
+                Logger.Error(e.StackTrace);
+            
+            // restart loop after 3 minutes
+            await Task.Delay(180000, token);
+            await RunAsync(token);
         }
     }
 
