@@ -44,6 +44,7 @@ internal static class StartService
 
                 foreach (var roomId in comingLessons)
                 {
+                    await Task.Delay(10000, token); // prevent rate limit
                     var computers = await api.GetComputersAsync(roomId);
                     if (computers is null)
                         continue;
