@@ -88,7 +88,12 @@ public class WsManager
                             Process.Start("shutdown", "/r /f /t 0");
                             break;
                         case "logoff":
-                            Process.Start("shutdown", "/l");
+                            if (ShutdownManager.GetLoggedInUsername() is { } username)
+                            {
+                                if (username.Contains('\\'))
+                                    username = username.Split("\\")[1];
+                                await PipeClient.SendCommand($"ClassInsights-{username}", "logoff", token);
+                            } 
                             break;
                     }
                 }

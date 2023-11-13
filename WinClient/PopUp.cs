@@ -48,18 +48,23 @@ public partial class PopUp : Form
             do
             {
                 var line = await reader.ReadLineAsync();
-                if (line is null) break;
+                if (line is "BYE" or null)
+                    break;
 
-                if (line is "shutdown")
+                switch (line)
                 {
-                    Process.Start("shutdown", "/s /f /t 300");
-                    _allowVisible = true;
-                    Show();
-                    await writer.WriteLineAsync("OK");
+                    case "shutdown":
+                        Process.Start("shutdown", "/s /f /t 300");
+                        _allowVisible = true;
+                        Show();
+                        await writer.WriteLineAsync("OK");
+                        break;
+                    case "logoff":
+                        Process.Start("shutdown", "/l");
+                        await writer.WriteLineAsync("OK");
+                        break;
                 }
-                else if (line is "BYE") break;
             } while (true);
-
             serverPipe.Disconnect();
         }
     }
