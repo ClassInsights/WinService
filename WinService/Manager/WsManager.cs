@@ -1,6 +1,9 @@
 ﻿using System.Diagnostics;
 using System.Net.WebSockets;
+using System.Runtime.InteropServices;
+using System.Security.Principal;
 using System.Text;
+using Microsoft.Win32.SafeHandles;
 using Newtonsoft.Json;
 using Timer = System.Timers.Timer;
 
@@ -68,7 +71,7 @@ public class WsManager
         await _webSocket.ConnectAsync(new Uri(endpoint), CancellationToken.None);
         Logger.Log("Connected to Websocket!");
     }
-
+    
     private void StartCommandReader(CancellationToken token)
     {
         _ = Task.Run(async () =>
@@ -77,7 +80,7 @@ public class WsManager
             {
                 while (!token.IsCancellationRequested)
                 {
-                    var command = await ReadTextAsync();
+                    var command = await ReadTextAsync(token);
                     Logger.Log($"Received '{command}' command!");
                     switch (command)
                     {
@@ -97,6 +100,10 @@ public class WsManager
                             break;
                     }
                 }
+            }
+            catch (TaskCanceledException)
+            {
+                Logger.Log("Cancelled StartCommandReader!");
             }
             catch (Exception e)
             {
@@ -134,7 +141,7 @@ public class WsManager
         }
     }
 
-    private async Task<string?> ReadTextAsync()
+    private async Task<string?> ReadTextAsync(CancellationToken token)
     {
         var buffer = new byte[8192];
         var text = new StringBuilder();
@@ -142,7 +149,7 @@ public class WsManager
         WebSocketReceiveResult receiveResult;
         do
         {
-            receiveResult = await _webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+            receiveResult = await _webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), token);
             if (receiveResult.MessageType != WebSocketMessageType.Close)
             {
                 text.Append(Encoding.UTF8.GetString(new ArraySegment<byte>(buffer, 0, receiveResult.Count)));

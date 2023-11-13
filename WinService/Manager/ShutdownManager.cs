@@ -55,6 +55,7 @@ public class ShutdownManager
             {
                 // wait until current lesson is over
                 var lessonEnd = GetNextLessonInfo()["endTime"];
+                Logger.Log($"Current lesson ends in {lessonEnd} ms!");
                 await Task.Delay(lessonEnd, token);
 
                 // get lesson infos (startTime, endTime) again after lesson is over
@@ -69,16 +70,17 @@ public class ShutdownManager
                         await Task.Delay(NoLessonsUseTime * 60000, token);
                         continue; // check again if any lesson is near
                     }
-
+                    Logger.Log($"Send shutdown at {DateTime.Now.TimeOfDay:g}! startTime: {delay["startTime"]}ms");
                     await SendShutdownAsync(token);
-                    loopStart = DateTime.Now; // reset loopStart after shutdown sent, that if users aborts after all lessons it'll wait again for NoLessonsUseTime
+                    loopStart = DateTime.Now; // reset loopStart after shutdown sent that if users aborts after all lessons it'll wait again for NoLessonsUseTime
                     continue; // skip waiting for next lesson, otherwise service could wait long hours if user aborts shutdown (service will now wait for lessonEnd OR NoLessonsUseTime)
                 }
 
                 var lessonStart = Math.Min(delay["startTime"], NoLessonsUseTime * 60000);
 
                 // wait until next lesson starts (max duration is NoLessonUseTime)
-                await Task.Delay(lessonStart, token);
+                // add 5 seconds buffer to be sure current lesson is over and next lessonStart won't be 0 
+                await Task.Delay(lessonStart + 5000, token);
             }
             catch (Exception e)
             {
@@ -113,9 +115,20 @@ public class ShutdownManager
         var endTimes = _lessons.Select(x => x.EndTime.TimeOfDay).Distinct().ToList();
         var startTimes = _lessons.Select(x => x.StartTime.TimeOfDay).Distinct().ToList();
 
-        var closestStartTime = GetNearestTime(startTimes);
-        var closestEndTime = GetNearestTime(endTimes);
+        /*
+         get closest times from before 3 minutes, otherwise double lessons without any break will be skipped example:
+         
+         [lesson 1] endTime 8:35
+         [lesson 2] startTime 8:35
+         [lesson 3] startTime 9:30
+         
+         service will wait for end of lesson 1 but if it uses DateTime.Now (which would be 8:35) as default it will think that lesson 2 is already over
+         */
+        var closestStartTime = GetNearestTime(startTimes, DateTime.Now.AddMinutes(-3).TimeOfDay);
+        var closestEndTime = GetNearestTime(endTimes, DateTime.Now.AddMinutes(-3).TimeOfDay);
 
+        Logger.Log("StartTimes: " + string.Join(", ", startTimes.Select(x => x.ToString("g"))));
+        Logger.Log("Closest startTime " + closestStartTime.ToString("g"));
         return new Dictionary<string, int>
         {
             ["startTime"] = (int)closestStartTime.TotalMilliseconds,
@@ -145,7 +158,7 @@ public class ShutdownManager
         if (!timesFuture.Any()) return TimeSpan.Zero;
 
         var closestTime = timesFuture.MinBy(t => Math.Abs((t - d).Ticks));
-        return closestTime - DateTime.Now.TimeOfDay;
+        return closestTime - d;
     }
 
     /// <summary>
@@ -166,8 +179,8 @@ public class ShutdownManager
 
         if (username.Contains('\\')) username = username.Split("\\")[1];
 
-        var pipeName = $"AutoShutdown-{username}";
-        await PipeClient.SendShutdown(pipeName, token);
+        var pipeName = $"ClassInsights-{username}";
+        await PipeClient.SendCommand(pipeName, "shutdown", token);
     }
 
     // https://stackoverflow.com/a/7186755

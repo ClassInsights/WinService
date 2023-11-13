@@ -31,7 +31,7 @@ public partial class PopUp : Form
         var username = WindowsIdentity.GetCurrent().Name;
         if (username.Contains('\\')) username = username.Split('\\')[1];
 
-        await ServerThread($"AutoShutdown-{username}");
+        await ServerThread($"ClassInsights-{username}");
     }
 
     private async Task ServerThread(string pipeName)
@@ -44,7 +44,7 @@ public partial class PopUp : Form
             var writer = new StreamWriter(serverPipe) { AutoFlush = true };
 
             var reader = new StreamReader(serverPipe);
-            await writer.WriteLineAsync("AutoShutdown");
+            await writer.WriteLineAsync("ClassInsights");
             do
             {
                 var line = await reader.ReadLineAsync();

@@ -1,6 +1,7 @@
 ﻿using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using System.Security.Principal;
 using WinService.Models;
 using Timer = System.Timers.Timer;
 
@@ -42,7 +43,8 @@ public class HeartbeatManager
 #endif
                     RoomId: _winService.Room.RoomId,
                     MacAddress: GetMacAddress(),
-                    IpAddress: GetLocalIpAddress()
+                    IpAddress: GetLocalIpAddress(),
+                    LastUser: ShutdownManager.GetLoggedInUsername() ?? WindowsIdentity.GetCurrent().Name
                 ));
         }
         catch (Exception e)

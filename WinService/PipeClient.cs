@@ -6,7 +6,7 @@ namespace WinService;
 // https://gist.github.com/AArnott/0d5f4645ad7e9a765cee#file-namedpipes-cs
 public class PipeClient
 {
-    public static async Task SendShutdown(string pipeName, CancellationToken token)
+    public static async Task SendCommand(string pipeName, string command, CancellationToken token)
     {
         var clientPipe = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
         await clientPipe.ConnectAsync(token);
@@ -19,15 +19,17 @@ public class PipeClient
         var reader = new StreamReader(clientPipe);
         var line = await reader.ReadLineAsync(token);
 
-        if (line != "AutoShutdown")
-            throw new ApplicationException("Error");
+        if (line != "ClassInsights")
+        {
+            Logger.Error($"{pipeName} is from another application!");
+            return;
+        }
 
-        await writer.WriteLineAsync("shutdown");
+        await writer.WriteLineAsync(command);
 
         line = await reader.ReadLineAsync(token);
-        if (line is not "OK")
-            throw new ApplicationException("Error");
-
+        if (line is not "OK") Logger.Error($"{line} for {pipeName} did not succeed!");
+        
         await writer.WriteLineAsync("BYE");
         clientPipe.WaitForPipeDrain();
 
