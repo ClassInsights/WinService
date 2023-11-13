@@ -39,7 +39,8 @@ public class Api
 
     public async Task<ApiModels.Computer?> UpdateComputer(ApiModels.Computer request)
     {
-        var response = await SendRequestAsync("computers", JsonConvert.SerializeObject(request),
+        var settings = new JsonSerializerSettings{DateFormatString ="yyyy-MM-ddTHH:mm:ss.fffZ"};
+        var response = await SendRequestAsync("computers", JsonConvert.SerializeObject(request, settings),
             requestMethod: RequestMethod.Post);
         return JsonConvert.DeserializeObject<ApiModels.Computer>(response);
     }
