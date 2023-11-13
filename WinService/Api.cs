@@ -89,7 +89,8 @@ public class Api
             if (JwtToken != null)
                 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", JwtToken);
             var content = new StringContent(body, Encoding.UTF8, "application/json");
-            var url = $"{baseUrl}{endpoint}?{query}";
+            if (!string.IsNullOrEmpty(query)) query = $"?{query}";
+            var url = $"{baseUrl}{endpoint}{query}";
 
             var response = requestMethod switch
             {
