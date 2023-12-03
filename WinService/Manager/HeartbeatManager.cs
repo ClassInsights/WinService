@@ -61,7 +61,8 @@ public class HeartbeatManager
         foreach (var ip in host.AddressList)
             if (ip.AddressFamily == AddressFamily.InterNetwork)
                 return ip.ToString();
-        throw new Exception("No network adapters with an IPv4 address in the system!");
+        Logger.Error("No network adapters with an IPv4 address in the system!");
+        return string.Empty;
     }
 
     // https://stackoverflow.com/a/7661829/16871250
