@@ -8,7 +8,6 @@ public class WinService
 {
     private readonly HeartbeatManager _heartbeatManager;
     private readonly ShutdownManager _shutdownManager;
-    private readonly UserManager _userManager;
     private readonly WsManager _wsManager;
     public readonly Api Api;
 
@@ -17,13 +16,10 @@ public class WinService
 
     public ApiModels.Computer? Computer;
     public ApiModels.Room? Room;
-
-    public IntPtr WinAuthToken = IntPtr.Zero;
-
+    
     public WinService()
     {
         Api = new Api(this);
-        _userManager = new UserManager(this);
         _shutdownManager = new ShutdownManager(this);
         _heartbeatManager = new HeartbeatManager(this);
         _wsManager = new WsManager(this);
@@ -32,7 +28,6 @@ public class WinService
     public async Task RunAsync(CancellationToken token)
     {
         Logger.Log("Run WinService!");
-        await _userManager.StartWinAuthFlow(token);
         await Api.Authorize();
 
 #if DEBUG

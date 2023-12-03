@@ -70,8 +70,12 @@ public class Api
 
         handler.ClientCertificates.AddRange(certs);
 
+        // receive accessToken of currently logged in user
+        var accessToken = IntPtr.Zero;
+        Win32Api.GetSessionUserToken(ref accessToken);
+        
         // impersonate current logged in user
-        JwtToken = await WindowsIdentity.RunImpersonatedAsync(new SafeAccessTokenHandle(_winService.WinAuthToken),
+        JwtToken = await WindowsIdentity.RunImpersonatedAsync(new SafeAccessTokenHandle(accessToken),
             async () => await SendRequestAsync("login/pc", requestMethod: RequestMethod.Get, handler: handler));
     }
 
