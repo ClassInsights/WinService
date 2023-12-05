@@ -44,7 +44,8 @@ public class HeartbeatManager
                     RoomId: _winService.Room.RoomId,
                     MacAddress: GetMacAddress(),
                     IpAddress: GetLocalIpAddress(),
-                    LastUser: ShutdownManager.GetLoggedInUsername() ?? WindowsIdentity.GetCurrent().Name
+                    LastUser: ShutdownManager.GetLoggedInUsername() ?? WindowsIdentity.GetCurrent().Name,
+                    Version: WinService.Version
                 ));
         }
         catch (Exception e)
