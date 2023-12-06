@@ -3,15 +3,9 @@ using Microsoft.Extensions.Logging;
 
 namespace WinService;
 
-public class Service : BackgroundService
+public class Service(ILogger<Service> logger) : BackgroundService
 {
-    private readonly ILogger<Service> _logger;
     private WinService? _winService;
-
-    public Service(ILogger<Service> logger)
-    {
-        _logger = logger;
-    }
 
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -23,7 +17,7 @@ public class Service : BackgroundService
         }
         catch (Exception ex)
         {
-            _logger.LogCritical(ex, "{Message}", ex.Message);
+            logger.LogCritical(ex, "{Message}", ex.Message);
         }
     }
 
@@ -36,7 +30,7 @@ public class Service : BackgroundService
         }
         catch (Exception ex)
         {
-            _logger.LogCritical(ex, "{Message}", ex.Message);
+            logger.LogCritical(ex, "{Message}", ex.Message);
         }
     }
 }

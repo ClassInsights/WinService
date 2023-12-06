@@ -9,15 +9,9 @@ using WinService.Models;
 
 namespace WinService;
 
-public class Api
+public class Api(WinService winService)
 {
-    private readonly WinService _winService;
     public string? JwtToken;
-
-    public Api(WinService winService)
-    {
-        _winService = winService;
-    }
 
     public async Task<ApiModels.Room?> GetRoomAsync(string name)
     {
@@ -47,7 +41,7 @@ public class Api
 
     public async Task Authorize()
     {
-        if (_winService.Configuration["Api:CertificateSubject"] is not { } certSubject)
+        if (winService.Configuration["Api:CertificateSubject"] is not { } certSubject)
             throw new Exception("Api:CertificateSubject configuration missing!");
 
         var store = new X509Store(StoreName.My, StoreLocation.LocalMachine);
@@ -85,7 +79,7 @@ public class Api
         // try 3 times to access endpoint
         for (var i = 0; i < 3; i++)
         {
-            if (_winService.Configuration["Api:BaseUrl"] is not { } baseUrl)
+            if (winService.Configuration["Api:BaseUrl"] is not { } baseUrl)
                 throw new Exception("Api:BaseUrl configuration missing!");
 
             handler ??= new HttpClientHandler();

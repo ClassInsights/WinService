@@ -7,15 +7,8 @@ using Timer = System.Timers.Timer;
 
 namespace WinService.Manager;
 
-public class HeartbeatManager
+public class HeartbeatManager(WinService winService)
 {
-    private readonly WinService _winService;
-
-    public HeartbeatManager(WinService winService)
-    {
-        _winService = winService;
-    }
-
     public async Task Start(CancellationToken token)
     {
         await SendHeartbeat(token);
@@ -31,17 +24,17 @@ public class HeartbeatManager
     {
         try
         {
-            if (!token.IsCancellationRequested && _winService is { Computer: not null, Room: not null })
-                _winService.Computer = await _winService.Api.UpdateComputer(new ApiModels.Computer
+            if (!token.IsCancellationRequested && winService is { Computer: not null, Room: not null })
+                winService.Computer = await winService.Api.UpdateComputer(new ApiModels.Computer
                 (
-                    _winService.Computer.ComputerId,
+                    winService.Computer.ComputerId,
                     LastSeen: DateTime.Now,
 #if DEBUG
                     Name: "OG2-DV2",
 #else
                     Name: Environment.MachineName,
 #endif
-                    RoomId: _winService.Room.RoomId,
+                    RoomId: winService.Room.RoomId,
                     MacAddress: GetMacAddress(),
                     IpAddress: GetLocalIpAddress(),
                     LastUser: ShutdownManager.GetLoggedInUsername() ?? WindowsIdentity.GetCurrent().Name,

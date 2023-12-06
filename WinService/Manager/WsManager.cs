@@ -6,24 +6,15 @@ using Timer = System.Timers.Timer;
 
 namespace WinService.Manager;
 
-public class WsManager
+public class WsManager(WinService winService)
 {
-    private readonly EnergyManager _energyManager;
-    private readonly Timer _timer;
-    private readonly WinService _winService;
-    private ClientWebSocket _webSocket;
-
-    public WsManager(WinService winService)
-    {
-        _winService = winService;
-        _webSocket = new ClientWebSocket();
-        _energyManager = new EnergyManager();
-        _timer = new Timer { Interval = 500 };
-    }
+    private readonly EnergyManager _energyManager = new();
+    private readonly Timer _timer = new() { Interval = 500 };
+    private ClientWebSocket _webSocket = new();
 
     public async Task Start(CancellationToken token)
     {
-        if (_winService.Configuration["Websocket:Endpoint"] is not { } endpoint)
+        if (winService.Configuration["Websocket:Endpoint"] is not { } endpoint)
             throw new Exception("Websocket:Endpoint is missing in appsettings.json!");
 
         try
@@ -64,7 +55,7 @@ public class WsManager
 
     private async Task Connect(string endpoint)
     {
-        _webSocket.Options.SetRequestHeader("Authorization", $"Bearer {_winService.Api.JwtToken}");
+        _webSocket.Options.SetRequestHeader("Authorization", $"Bearer {winService.Api.JwtToken}");
         await _webSocket.ConnectAsync(new Uri(endpoint), CancellationToken.None);
         Logger.Log("Connected to Websocket!");
     }
@@ -114,7 +105,7 @@ public class WsManager
 
     private async Task SendHeartbeat()
     {
-        if (_winService is not { Computer: not null, Room: not null })
+        if (winService is not { Computer: not null, Room: not null })
             return;
         
         if (_webSocket.State != WebSocketState.Open) return;
@@ -122,9 +113,9 @@ public class WsManager
         try
         {
             _energyManager.UpdateValues();
-            var heartbeat = new Heartbeat(Name: Environment.MachineName, Type: "Heartbeat", Room: _winService.Room.RoomId,
+            var heartbeat = new Heartbeat(Name: Environment.MachineName, Type: "Heartbeat", Room: winService.Room.RoomId,
                 UpTime: DateTime.Now.AddMilliseconds(-1 * Environment.TickCount64),
-                ComputerId: _winService.Computer.ComputerId,
+                ComputerId: winService.Computer.ComputerId,
                 Data: new Data(CpuUsage: _energyManager.GetCpuUsages(),
                     Power: _energyManager.GetPowerUsage(), EthernetUsages: _energyManager.GetEthernetUsages(),
                     RamUsage: _energyManager.GetRamUsage(), DiskUsages: _energyManager.GetDiskUsages()));
