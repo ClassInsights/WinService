@@ -9,7 +9,7 @@ namespace WinService.Manager;
 public class WsManager(WinService winService)
 {
     private readonly EnergyManager _energyManager = new();
-    private readonly Timer _timer = new() { Interval = 500 };
+    private readonly Timer _timer = new() { Interval = 1000 };
     private ClientWebSocket _webSocket = new();
 
     public async Task Start(CancellationToken token)
