@@ -6,7 +6,7 @@ namespace WinService;
 
 public class WinService
 {
-    public const string Version = "beta-v1.2.3";
+    public const string Version = "beta-v1.2.4";
     private readonly HeartbeatManager _heartbeatManager;
     private readonly ShutdownManager _shutdownManager;
     private readonly WsManager _wsManager;
