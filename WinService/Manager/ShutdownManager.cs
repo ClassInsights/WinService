@@ -174,16 +174,20 @@ public class ShutdownManager
     {
         Logger.Log("Send shutdown to client!");
         var username = GetLoggedInUsername();
-        if (username is null) // shutdown pc immediately if no user is logged in
+
+        if (username != null)
         {
-            Process.Start("shutdown", "/s /f /t 0");
-            return;
-        }
-
-        if (username.Contains('\\')) username = username.Split("\\")[1];
-
-        var pipeName = $"ClassInsights-{username}";
-        await PipeClient.SendCommand(pipeName, "shutdown", token);
+            try
+            {
+                if (username.Contains('\\')) username = username.Split("\\")[1];
+                await PipeClient.SendCommand( $"ClassInsights-{username}", "shutdown", token);
+                return;
+            }
+            catch (Exception e)
+            {
+                Logger.Error($"Failed to send Shutdown via pipes: {e.Message}");
+            }
+        } else Process.Start("shutdown", "/s /f /t 60");
     }
 
     // https://stackoverflow.com/a/7186755
