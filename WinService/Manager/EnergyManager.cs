@@ -11,12 +11,9 @@ public class EnergyManager : IDisposable
         _computer = new Computer
         {
             IsCpuEnabled = true,
-            IsGpuEnabled = true,
             IsMemoryEnabled = true,
-            IsMotherboardEnabled = true,
-            IsControllerEnabled = true,
             IsNetworkEnabled = true,
-            IsStorageEnabled = true
+            IsStorageEnabled = true,
         };
 
         _computer.Open();

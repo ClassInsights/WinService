@@ -43,6 +43,7 @@ public class WsManager(WinService winService)
     public async Task Stop()
     {
         _timer.Stop();
+        _energyManager.Dispose();
         await Close();
         _webSocket.Abort();
     }
