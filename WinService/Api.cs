@@ -1,9 +1,7 @@
 ﻿using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Cryptography.X509Certificates;
-using System.Security.Principal;
 using System.Text;
-using Microsoft.Win32.SafeHandles;
 using Newtonsoft.Json;
 using WinService.Models;
 
@@ -64,13 +62,7 @@ public class Api(WinService winService)
 
         handler.ClientCertificates.AddRange(certs);
 
-        // receive accessToken of currently logged in user
-        var accessToken = IntPtr.Zero;
-        Win32Api.GetSessionUserToken(ref accessToken);
-        
-        // impersonate current logged in user
-        JwtToken = await WindowsIdentity.RunImpersonatedAsync(new SafeAccessTokenHandle(accessToken),
-            async () => await SendRequestAsync("login/pc", requestMethod: RequestMethod.Get, handler: handler));
+        JwtToken = await SendRequestAsync("login/pc", requestMethod: RequestMethod.Get, handler: handler);
     }
 
     private async Task<string> SendRequestAsync(string endpoint, string body = "", string query = "",
