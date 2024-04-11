@@ -4,7 +4,7 @@ using WinService.Models;
 
 namespace WinService.Manager;
 
-public class ShutdownManager
+public class ShutdownManager(WinService winService)
 {
     private const int BufferMinutes = 20; // time until no lessons should be to shutdown
 
@@ -12,19 +12,13 @@ public class ShutdownManager
         NoLessonsUseTime =
             50; // time how long pc should be usable after all lessons and max delay when recheck for lesson should be
 
-    private readonly WinService _winService;
-    private List<ApiModels.Lesson> _lessons = new();
+    private List<ApiModels.Lesson> _lessons = [];
 
-
-    public ShutdownManager(WinService winService)
-    {
-        _winService = winService;
-    }
 
     // endless function, will freeze
     public async Task Start(CancellationToken token)
     {
-        _lessons = await _winService.Api.GetLessonsAsync(_winService.Room.RoomId);
+        _lessons = await winService.Api.GetLessonsAsync(winService.Room.RoomId);
         await CheckShutdownLoop(token);
     }
 
@@ -62,7 +56,7 @@ public class ShutdownManager
                 await Task.Delay(lessonEnd, token);
                 
                 // fetch lessons again, if older than 5 minutes
-                if (lessonEnd > 300000) _lessons = await _winService.Api.GetLessonsAsync(_winService.Room.RoomId);
+                if (lessonEnd > 300000) _lessons = await winService.Api.GetLessonsAsync(winService.Room.RoomId);
 
                 // get lesson infos (startTime, endTime) again after lesson is over
                 var delay = GetNextLessonInfo();

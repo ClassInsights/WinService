@@ -26,7 +26,7 @@ public class Api(WinService winService)
     public async Task<List<ApiModels.Lesson>> GetLessonsAsync(int room)
     {
         var response = await SendRequestAsync($"rooms/{room}/lessons", requestMethod: RequestMethod.Get);
-        return JsonConvert.DeserializeObject<List<ApiModels.Lesson>>(response) ?? new List<ApiModels.Lesson>();
+        return JsonConvert.DeserializeObject<List<ApiModels.Lesson>>(response) ?? [];
     }
 
     public async Task<ApiModels.Computer?> UpdateComputer(ApiModels.Computer request)
