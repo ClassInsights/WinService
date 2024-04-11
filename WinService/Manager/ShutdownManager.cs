@@ -60,6 +60,9 @@ public class ShutdownManager
                 var lessonEnd = GetNextLessonInfo()["endTime"];
                 Logger.Log($"Current lesson ends in {lessonEnd} ms!");
                 await Task.Delay(lessonEnd, token);
+                
+                // fetch lessons again, if older than 5 minutes
+                if (lessonEnd > 300000) _lessons = await _winService.Api.GetLessonsAsync(_winService.Room.RoomId);
 
                 // get lesson infos (startTime, endTime) again after lesson is over
                 var delay = GetNextLessonInfo();
