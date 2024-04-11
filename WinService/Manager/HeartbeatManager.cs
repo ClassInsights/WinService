@@ -7,17 +7,24 @@ using Timer = System.Timers.Timer;
 
 namespace WinService.Manager;
 
-public class HeartbeatManager(WinService winService)
+public class HeartbeatManager(WinService winService) : IDisposable
 {
-    public async Task Start(CancellationToken token)
+    private readonly Timer _timer = new()
     {
-        await SendHeartbeat(token);
-        var timer = new Timer
-        {
-            Interval = new Random().Next(20, 60) * 1000
-        };
-        timer.Elapsed += async (_, _) => await SendHeartbeat(token);
-        timer.Start();
+        Interval = new Random().Next(20, 60) * 1000
+    };
+
+    public void Start(CancellationToken token)
+    {
+        _timer.Elapsed += async (_, _) => await SendHeartbeat(token);
+        _timer.Start();
+    }
+    
+    public void Dispose()
+    {
+        _timer.Stop();
+        _timer.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     private async Task SendHeartbeat(CancellationToken token)
@@ -25,7 +32,8 @@ public class HeartbeatManager(WinService winService)
         try
         {
             if (!token.IsCancellationRequested && winService is { Computer: not null, Room: not null })
-                winService.Computer = await winService.Api.UpdateComputer(new ApiModels.Computer
+            {
+                var computer = await winService.Api.UpdateComputer(new ApiModels.Computer
                 (
                     winService.Computer.ComputerId,
                     LastSeen: DateTime.Now,
@@ -40,6 +48,15 @@ public class HeartbeatManager(WinService winService)
                     LastUser: ShutdownManager.GetLoggedInUsername() ?? WindowsIdentity.GetCurrent().Name,
                     Version: WinService.Version
                 ));
+
+                if (computer == null)
+                {
+                    Logger.Error("Failed to update Computer!");
+                    return;
+                }
+
+                winService.Computer = computer;
+            }
         }
         catch (Exception e)
         {

@@ -15,8 +15,8 @@ public class WinService
     public readonly IConfigurationRoot Configuration =
         new ConfigurationBuilder().AddJsonFile("appsettings.json").AddEnvironmentVariables().Build();
 
-    public ApiModels.Computer? Computer;
-    public ApiModels.Room? Room;
+    public ApiModels.Computer Computer = null!;
+    public ApiModels.Room Room = null!;
     
     public WinService()
     {
@@ -32,20 +32,25 @@ public class WinService
         await Api.Authorize();
 
 #if DEBUG
-        Room = await Api.GetRoomAsync("DV2");
-        Computer = await Api.GetComputerAsync("OG2-DV2");
+        var room = await Api.GetRoomAsync("DV2");
+        var computer = await Api.GetComputerAsync("OG2-DV2");
 #else
-        Room = await Api.GetRoomAsync(Environment.MachineName);
-        Computer = await Api.GetComputerAsync(Environment.MachineName);
+        var room = await Api.GetRoomAsync(Environment.MachineName);
+        var computer = await Api.GetComputerAsync(Environment.MachineName);
 #endif
-        if (Computer == null || Room == null)
+        if (computer == null || room == null)
         {
             Logger.Error("Failed to retrieve Room or Computer objects!");
             return;
         }
+
+        Computer = computer;
+        Room = room;
+        
         try
         {
-            await _heartbeatManager.Start(token);
+            _heartbeatManager.Start(token);
+            
             await Task.WhenAll(_shutdownManager.Start(token), ShutdownManager.CheckLifeSign(token),
                 _wsManager.Start(token)); // takes endless unless service stop
         }
@@ -57,6 +62,7 @@ public class WinService
 
     public async Task StopAsync()
     {
+        _heartbeatManager.Dispose();
         await _wsManager.Stop();
     }
 }
