@@ -6,7 +6,7 @@ namespace WinService;
 
 public class WinService
 {
-    public const string Version = "beta-v1.2.5";
+    public const string Version = "beta-v1.2.6";
     private readonly HeartbeatManager _heartbeatManager;
     private readonly ShutdownManager _shutdownManager;
     private readonly WsManager _wsManager;
@@ -29,23 +29,32 @@ public class WinService
     public async Task RunAsync(CancellationToken token)
     {
         Logger.Log("Run WinService!");
-        await Api.Authorize();
+        try
+        {
+            await Api.Authorize();
 
 #if DEBUG
-        var room = await Api.GetRoomAsync("DV2");
-        var computer = await Api.GetComputerAsync("OG2-DV2");
+            var room = await Api.GetRoomAsync("DV2");
+            var computer = await Api.GetComputerAsync("OG2-DV2");
 #else
-        var room = await Api.GetRoomAsync(Environment.MachineName);
-        var computer = await Api.GetComputerAsync(Environment.MachineName);
+            var room = await Api.GetRoomAsync(Environment.MachineName);
+            var computer = await Api.GetComputerAsync(Environment.MachineName);
 #endif
-        if (computer == null || room == null)
-        {
-            Logger.Error("Failed to retrieve Room or Computer objects!");
-            return;
-        }
+            if (computer == null || room == null)
+            {
+                Logger.Error("Failed to retrieve Room or Computer objects!");
+                return;
+            }
 
-        Computer = computer;
-        Room = room;
+            Computer = computer;
+            Room = room;
+        }
+        catch (Exception e)
+        {
+            Logger.Error($"Failed to start WinService: {e.Message}");
+            await Task.Delay(180000, token); // wait 3 minutes
+            await RunAsync(token); // try again
+        }
         
         try
         {
