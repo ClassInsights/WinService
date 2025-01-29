@@ -1,13 +1,54 @@
-﻿namespace WinService.Models;
+﻿using System.Text.Json.Serialization;
+using NodaTime;
+using NodaTime.Serialization.SystemTextJson;
+
+namespace WinService.Models;
 
 public class ApiModels
 {
-    public record Class(int ClassId, string Name, string Head, string? AzureGroupID);
+    public class Class
+    {
+        public int ClassId { get; set; }
+        public string Name { get; set; } = null!;
+        public string Head { get; set; } = null!;
+        public string? AzureGroupId { get; set; }
+    }
 
-    public record Lesson(int LessonId, int RoomId, int SubjectId, int ClassId, DateTime StartTime, DateTime EndTime);
+    public class Lesson
+    {
+        public int LessonId { get; set; }
+        public int RoomId { get; set; }
+        public int SubjectId { get; set; }
+        public int ClassId { get; set; }
+        public Instant StartTime { get; set; }
+        public Instant EndTime { get; set; }
+    }
 
-    public record Computer(int ComputerId, int RoomId, string Name, string MacAddress, string IpAddress,
-        DateTime LastSeen, string LastUser, string? Version);
+    public class Computer // yyyy-MM-ddTHH:mm:ss.fffZ
+    {
+        public int? ComputerId { get; set; }
+        public int RoomId { get; set; }
+        public string Name { get; set; } = null!;
+        public string MacAddress { get; set; } = null!;
+        public string IpAddress { get; set; } = null!;
+        [JsonConverter(typeof(NodaTimeDefaultJsonConverterFactory))]
+        public Instant LastSeen { get; set; }
+        public string LastUser { get; set; } = null!;
+        public string? Version { get; set; }
+    }
 
-    public record Room(int RoomId, string Name, string LongName);
+    public class Room
+    {
+        public int RoomId { get; set; }
+        public string Name { get; set; } = null!;
+        public string LongName { get; set; } = null!;
+    }
 }
+
+[JsonSerializable(typeof(ApiModels.Class))]
+[JsonSerializable(typeof(ApiModels.Lesson))]
+[JsonSerializable(typeof(List<ApiModels.Lesson>))]
+[JsonSerializable(typeof(ApiModels.Computer))]
+[JsonSerializable(typeof(ApiModels.Room))]
+[JsonSourceGenerationOptions(WriteIndented = true, PropertyNameCaseInsensitive = true, NumberHandling = JsonNumberHandling.AllowReadingFromString, PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
+internal partial class SourceGenerationContext : JsonSerializerContext;
