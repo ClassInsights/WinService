@@ -70,7 +70,7 @@ public class ShutdownService(ILogger<ShutdownService> logger, IClock clock, IApi
             
             // if all lessons are over, wait for NoLessonsUseTime
             if (lessonEndDuration == Duration.Zero)
-                await Task.Delay(NoLessonsTime, stoppingToken);
+                await Task.Delay(TimeSpan.FromMinutes(NoLessonsTime), stoppingToken);
             else
                 await Task.Delay(Duration.Min(updateLessonsInterval, lessonEndDuration).ToTimeSpan(), stoppingToken);
             
