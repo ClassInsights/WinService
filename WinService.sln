@@ -5,6 +5,7 @@ VisualStudioVersion = 17.4.33213.308
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WinService", "src\WinService\WinService.csproj", "{039F1399-E6BC-46DC-BB23-8051C2D8CBF0}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinService.Tests", "src\WinService.Tests\WinService.Tests.csproj", "{3955F876-7EA9-412D-AF12-8582E2950603}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
