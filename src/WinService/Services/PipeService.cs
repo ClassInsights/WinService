@@ -2,13 +2,14 @@ using Microsoft.Extensions.Hosting;
 using System.Collections.Concurrent;
 using System.IO.Pipes;
 using Microsoft.Extensions.Logging;
+using WinService.Interfaces;
 
 namespace WinService.Services;
 
-public class PipeService(ILogger<PipeService> logger): BackgroundService
+public class PipeService(ILogger<PipeService> logger): BackgroundService, IPipeService
 {
      // Concurrent dictionary to store active clients
-    public readonly ConcurrentDictionary<string, (StreamWriter Writer, DateTime LastHeartbeat)> Clients = new();
+    public ConcurrentDictionary<string, (StreamWriter Writer, DateTime LastHeartbeat)> Clients { get; } = new();
     private readonly TimeSpan _heartbeatInterval = TimeSpan.FromSeconds(10);
     private readonly TimeSpan _timeoutInterval = TimeSpan.FromSeconds(30);
     

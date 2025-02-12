@@ -3,6 +3,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.EventLog;
 using NodaTime;
+using WinService.Interfaces;
 using WinService.Manager;
 using WinService.Services;
 
@@ -24,8 +25,8 @@ builder.Logging.AddEventLog(new EventLogSettings
 });
 
 builder.Services.AddSingleton<IClock>(SystemClock.Instance);
-builder.Services.AddSingleton<ApiManager>();
-builder.Services.AddSingleton<PipeService>();
+builder.Services.AddSingleton<IApiManager, ApiManager>();
+builder.Services.AddSingleton<IPipeService, PipeService>();
 
 builder.Services.AddHostedService<PipeService>(provider => provider.GetRequiredService<PipeService>());
 builder.Services.AddHostedService<HeartbeatService>();

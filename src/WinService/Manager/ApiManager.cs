@@ -4,11 +4,12 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
+using WinService.Interfaces;
 using WinService.Models;
 
 namespace WinService.Manager;
 
-public class ApiManager
+public class ApiManager: IApiManager
 {
     public string? Token;
     private readonly HttpClient _httpClient = new();
