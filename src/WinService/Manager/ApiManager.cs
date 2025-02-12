@@ -11,13 +11,14 @@ namespace WinService.Manager;
 
 public class ApiManager: IApiManager
 {
-    public string? Token;
+    public string? Token { get; private set; }
+    public string? ApiUrl { get; }
+    
     private readonly HttpClient _httpClient = new();
     private readonly Lock _lock = new();
     private readonly ILogger<ApiManager> _logger;
-    public readonly ApiModels.Room Room;
-    public ApiModels.Computer? Computer;
-    public readonly string? ApiUrl;
+    public ApiModels.Room Room { get; }
+    public ApiModels.Computer? Computer {get; set; }
 
     public ApiManager(ILogger<ApiManager> logger)
     {

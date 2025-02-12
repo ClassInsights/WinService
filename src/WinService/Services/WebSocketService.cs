@@ -4,11 +4,12 @@ using System.Net.WebSockets;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using WinService.Interfaces;
 using WinService.Manager;
 
 namespace WinService.Services;
 
-public class WebSocketService(ILogger<WebSocketService> logger, ApiManager apiManager, PipeService pipeService): BackgroundService
+public class WebSocketService(ILogger<WebSocketService> logger, IApiManager apiManager, IPipeService pipeService): BackgroundService
 {
     private readonly EnergyManager _energyManager = new();
     private readonly PeriodicTimer _timer = new(TimeSpan.FromSeconds(1));

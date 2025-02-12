@@ -6,12 +6,12 @@ using System.Reflection;
 using System.Security.Principal;
 using Microsoft.Extensions.Logging;
 using NodaTime;
-using WinService.Manager;
+using WinService.Interfaces;
 using WinService.Models;
 
 namespace WinService.Services;
 
-public class HeartbeatService(ILogger<HeartbeatService> logger, IClock clock, ApiManager apiManager, PipeService pipeService): BackgroundService
+public class HeartbeatService(ILogger<HeartbeatService> logger, IClock clock, IApiManager apiManager, IPipeService pipeService): BackgroundService
 {
     private readonly PeriodicTimer _timer = new (TimeSpan.FromSeconds(new Random().Next(20, 60)));
     

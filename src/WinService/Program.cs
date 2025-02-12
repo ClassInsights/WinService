@@ -28,7 +28,7 @@ builder.Services.AddSingleton<IClock>(SystemClock.Instance);
 builder.Services.AddSingleton<IApiManager, ApiManager>();
 builder.Services.AddSingleton<IPipeService, PipeService>();
 
-builder.Services.AddHostedService<PipeService>(provider => provider.GetRequiredService<PipeService>());
+builder.Services.AddHostedService<PipeService>(provider => (PipeService) provider.GetRequiredService<IPipeService>());
 builder.Services.AddHostedService<HeartbeatService>();
 builder.Services.AddHostedService<ShutdownService>();
 builder.Services.AddHostedService<WebSocketService>();
