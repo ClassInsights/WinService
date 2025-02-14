@@ -67,16 +67,22 @@ public class ShutdownService(ILogger<ShutdownService> logger, IClock clock, IApi
         while (!stoppingToken.IsCancellationRequested)
         {
             var lessonEndDuration = await GetDurationUntilBreakAsync();
+            logger.LogInformation("Duration until end of near lessons: {duration}", lessonEndDuration.ToString());
             
             // if all lessons are over, wait for NoLessonsUseTime
             if (lessonEndDuration == Duration.Zero)
+            {
+                logger.LogInformation("All lessons are over, wait for NoLessonsUseTime");
                 await Task.Delay(TimeSpan.FromMinutes(NoLessonsTime), stoppingToken);
             else
                 await Task.Delay(Duration.Min(updateLessonsInterval, lessonEndDuration).ToTimeSpan(), stoppingToken);
             
-            // if break is here send shutdown
-            if (lessonEndDuration < updateLessonsInterval)
-                return true;
+            // if we only waited for the interval continue and update lessons
+            if (lessonEndDuration >= updateLessonsInterval)
+                continue;
+            
+            logger.LogInformation("Break is here send shutdown");
+            return true;
         }
         return false;
     }
