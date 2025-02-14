@@ -20,8 +20,10 @@ public class ApiModels
         public int RoomId { get; set; }
         public int SubjectId { get; set; }
         public int ClassId { get; set; }
-        public Instant StartTime { get; set; }
-        public Instant EndTime { get; set; }
+        [JsonConverter(typeof(NodaTimeDefaultJsonConverterFactory))]
+        public Instant Start { get; set; }
+        [JsonConverter(typeof(NodaTimeDefaultJsonConverterFactory))]
+        public Instant End { get; set; }
     }
 
     public class Computer // yyyy-MM-ddTHH:mm:ss.fffZ
@@ -50,5 +52,6 @@ public class ApiModels
 [JsonSerializable(typeof(List<ApiModels.Lesson>))]
 [JsonSerializable(typeof(ApiModels.Computer))]
 [JsonSerializable(typeof(ApiModels.Room))]
-[JsonSourceGenerationOptions(WriteIndented = true, PropertyNameCaseInsensitive = true, NumberHandling = JsonNumberHandling.AllowReadingFromString, PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
+[JsonSourceGenerationOptions(WriteIndented = true, PropertyNameCaseInsensitive = true,
+    NumberHandling = JsonNumberHandling.AllowReadingFromString, PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
 internal partial class SourceGenerationContext : JsonSerializerContext;

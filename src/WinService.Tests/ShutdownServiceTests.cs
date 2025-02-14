@@ -19,23 +19,23 @@ public class ShutdownServiceTests
         apiManager.Setup(mock => mock.GetLessonsAsync(null)).ReturnsAsync([
             new ApiModels.Lesson
             {
-                StartTime = Instant.FromUtc(2025, 1, 29, 8, 0),
-                EndTime = Instant.FromUtc(2025, 1, 29, 9, 0)
+                Start = Instant.FromUtc(2025, 1, 29, 8, 0),
+                End = Instant.FromUtc(2025, 1, 29, 9, 0)
             },
             new ApiModels.Lesson
             {
-                StartTime = Instant.FromUtc(2025, 1, 29, 9, 10),
-                EndTime = Instant.FromUtc(2025, 1, 29, 10, 0)
+                Start = Instant.FromUtc(2025, 1, 29, 9, 10),
+                End = Instant.FromUtc(2025, 1, 29, 10, 0)
             },
             new ApiModels.Lesson
             {
-                StartTime = Instant.FromUtc(2025, 1, 29, 10, 15), 
-                EndTime = Instant.FromUtc(2025, 1, 29, 11, 0)
+                Start = Instant.FromUtc(2025, 1, 29, 10, 15), 
+                End = Instant.FromUtc(2025, 1, 29, 11, 0)
             },
             new ApiModels.Lesson
             {
-                StartTime = Instant.FromUtc(2025, 1, 29, 11, 10),
-                EndTime = Instant.FromUtc(2025, 1, 29, 12, 00)
+                Start = Instant.FromUtc(2025, 1, 29, 11, 10),
+                End = Instant.FromUtc(2025, 1, 29, 12, 00)
             }
         ]);
         
@@ -53,23 +53,23 @@ public class ShutdownServiceTests
         apiManager.Setup(mock => mock.GetLessonsAsync(null)).ReturnsAsync([
             new ApiModels.Lesson
             {
-                StartTime = Instant.FromUtc(2025, 1, 29, 8, 0),
-                EndTime = Instant.FromUtc(2025, 1, 29, 9, 0)
+                Start = Instant.FromUtc(2025, 1, 29, 8, 0),
+                End = Instant.FromUtc(2025, 1, 29, 9, 0)
             },
             new ApiModels.Lesson
             {
-                StartTime = Instant.FromUtc(2025, 1, 29, 9, 10),
-                EndTime = Instant.FromUtc(2025, 1, 29, 10, 0)
+                Start = Instant.FromUtc(2025, 1, 29, 9, 10),
+                End = Instant.FromUtc(2025, 1, 29, 10, 0)
             },
             new ApiModels.Lesson
             {
-                StartTime = Instant.FromUtc(2025, 1, 29, 10, 30), 
-                EndTime = Instant.FromUtc(2025, 1, 29, 11, 0)
+                Start = Instant.FromUtc(2025, 1, 29, 10, 30), 
+                End = Instant.FromUtc(2025, 1, 29, 11, 0)
             },
             new ApiModels.Lesson
             {
-                StartTime = Instant.FromUtc(2025, 1, 29, 11, 10),
-                EndTime = Instant.FromUtc(2025, 1, 29, 12, 00)
+                Start = Instant.FromUtc(2025, 1, 29, 11, 10),
+                End = Instant.FromUtc(2025, 1, 29, 12, 00)
             }
         ]);
         

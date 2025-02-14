@@ -20,7 +20,6 @@ public class ShutdownService(ILogger<ShutdownService> logger, IClock clock, IApi
     {
         try
         {
-            _lessons = await apiManager.GetLessonsAsync();
             await Task.WhenAll(CheckLifeSign(stoppingToken), StartShutdownLoop(stoppingToken));
         }
         catch (OperationCanceledException)
@@ -74,6 +73,7 @@ public class ShutdownService(ILogger<ShutdownService> logger, IClock clock, IApi
             {
                 logger.LogInformation("All lessons are over, wait for NoLessonsUseTime");
                 await Task.Delay(TimeSpan.FromMinutes(NoLessonsTime), stoppingToken);
+            }
             else
                 await Task.Delay(Duration.Min(updateLessonsInterval, lessonEndDuration).ToTimeSpan(), stoppingToken);
             
@@ -107,8 +107,8 @@ public class ShutdownService(ILogger<ShutdownService> logger, IClock clock, IApi
     {
         // Sort lessons by StartTime (and then by EndTime for safety).
         var sortedLessons = _lessons
-            .OrderBy(lesson => lesson.StartTime)
-            .ThenBy(lesson => lesson.EndTime)
+            .OrderBy(lesson => lesson.Start)
+            .ThenBy(lesson => lesson.End)
             .ToList();
 
         // Define a 20-minute gap.
@@ -118,7 +118,7 @@ public class ShutdownService(ILogger<ShutdownService> logger, IClock clock, IApi
         var now = clock.GetCurrentInstant();
 
         // If there are no lessons or all lessons have already finished, return zero.
-        if (sortedLessons.Count == 0 || sortedLessons.Last().EndTime <= now)
+        if (sortedLessons.Count == 0 || sortedLessons.Last().End <= now)
         {
             return Duration.Zero;
         }
@@ -130,22 +130,22 @@ public class ShutdownService(ILogger<ShutdownService> logger, IClock clock, IApi
             var nextLesson = sortedLessons[i + 1];
 
             // Skip pairs where both lessons are already in the past.
-            if (currentLesson.EndTime <= now && nextLesson.StartTime <= now)
+            if (currentLesson.End <= now && nextLesson.Start <= now)
             {
                 continue;
             }
 
             // Define the "effective" end time of the current lesson.
             // If now is after the lesson’s scheduled end, use now (we’re in a gap).
-            var effectiveCurrentEnd = currentLesson.EndTime <= now ? now : currentLesson.EndTime;
+            var effectiveCurrentEnd = currentLesson.End <= now ? now : currentLesson.End;
 
             // Calculate the gap between the effective end of the current lesson and the start of the next lesson.
-            var gap = nextLesson.StartTime - effectiveCurrentEnd;
+            var gap = nextLesson.Start - effectiveCurrentEnd;
 
             if (gap < bigBreakThreshold) continue;
             
             // If now is already in the gap (i.e. break is ongoing), return zero.
-            if (now >= currentLesson.EndTime && now < nextLesson.StartTime)
+            if (now >= currentLesson.End && now < nextLesson.Start)
             {
                 return Duration.Zero;
             }
@@ -155,7 +155,7 @@ public class ShutdownService(ILogger<ShutdownService> logger, IClock clock, IApi
         }
 
         // If no big break was found, return the remaining time until the end of the last lesson.
-        return sortedLessons.Last().EndTime - now;
+        return sortedLessons.Last().End - now;
     }
     
     
@@ -173,8 +173,8 @@ public class ShutdownService(ILogger<ShutdownService> logger, IClock clock, IApi
     private async Task<(Instant nextLessonStart, Instant nextLessonEnd)> GetNextLessonInfoAsync()
     {
         _lessons = await apiManager.GetLessonsAsync();
-        var endTimes = _lessons.Select(x => x.EndTime).Distinct().ToList();
-        var startTimes = _lessons.Select(x => x.StartTime).Distinct().ToList();
+        var endTimes = _lessons.Select(x => x.End).Distinct().ToList();
+        var startTimes = _lessons.Select(x => x.Start).Distinct().ToList();
         
         var now = clock.GetCurrentInstant();
         // target needs to be a little in the past, otherwise double lessons will be skipped
