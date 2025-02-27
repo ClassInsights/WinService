@@ -52,8 +52,11 @@ public class ShutdownService(ILogger<ShutdownService> logger, IClock clock, IApi
 
     private async Task StartShutdownLoop(CancellationToken stoppingToken)
     {
-        await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken); 
-        if (await WaitUntilShutdownAsync(stoppingToken)) await SendShutdownAsync();
+        await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
+        while (await WaitUntilShutdownAsync(stoppingToken))
+        {
+            await SendShutdownAsync();
+        }
     }
     
     /// <summary>
