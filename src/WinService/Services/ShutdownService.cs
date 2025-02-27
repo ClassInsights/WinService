@@ -123,6 +123,14 @@ public class ShutdownService(ILogger<ShutdownService> logger, IClock clock, IApi
             return Duration.Zero;
         }
 
+        // If now is before the first lesson's start check if we are already in a break
+        if (now < sortedLessons.First().Start)
+        {
+            var gapBeforeFirstLesson = sortedLessons.First().Start - now;
+            if (gapBeforeFirstLesson >= bigBreakThreshold)
+                return Duration.Zero;
+        }
+        
         // Iterate over consecutive lessons.
         for (var i = 0; i < sortedLessons.Count - 1; i++)
         {

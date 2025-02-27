@@ -78,4 +78,24 @@ public class ShutdownServiceTests
         var duration = await shutdownService.GetDurationUntilBreakAsync();
         Assert.Equal(Duration.FromMinutes(90), duration);
     }
+    
+    [Fact]
+    public async Task GetDurationUntilBreakAsync_BeforeLessonsStarted_ReturnDurationUntilStartOfBreak()
+    {
+        var initialInstant = Instant.FromUtc(2025, 1, 29, 4, 0);
+        var apiManager = new Mock<IApiManager>();
+        
+        apiManager.Setup(mock => mock.GetLessonsAsync(null)).ReturnsAsync([
+            new ApiModels.Lesson
+            {
+                Start = Instant.FromUtc(2025, 1, 29, 8, 0),
+                End = Instant.FromUtc(2025, 1, 29, 9, 0)
+            }
+        ]);
+        
+        var shutdownService = new ShutdownService(new Mock<ILogger<ShutdownService>>().Object, new FakeClock(initialInstant), apiManager.Object, new Mock<IPipeService>().Object);
+        
+        var duration = await shutdownService.GetDurationUntilBreakAsync();
+        Assert.Equal(Duration.Zero, duration);
+    }
 }
