@@ -55,7 +55,7 @@ public class ShutdownService(ILogger<ShutdownService> logger, IClock clock, IApi
         await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
         while (await WaitUntilShutdownAsync(stoppingToken))
         {
-            await SendShutdownAsync();
+            await SendShutdownAsync(true);
         }
     }
     
@@ -217,9 +217,23 @@ public class ShutdownService(ILogger<ShutdownService> logger, IClock clock, IApi
     ///     If no user is logged in it shuts down the pc immediately
     /// </summary>
     /// <returns></returns>
-    private async Task SendShutdownAsync()
+    private async Task SendShutdownAsync(bool lessonCheck = false)
     {
-        logger.LogInformation("Send shutdown to client!");
+        if (lessonCheck)
+        {
+            logger.LogInformation("Check again if there are really no lessons near.");
+            var duration = await GetDurationUntilBreakAsync();
+            
+            if (duration != Duration.Zero)
+            {
+                logger.LogWarning("There are lessons near!");
+                return;
+            }
+            
+            logger.LogInformation("No lessons near, send shutdown to user!");
+        }
+        else
+            logger.LogInformation("Send shutdown to user!");
 
         if (!pipeService.Clients.IsEmpty)
         {
