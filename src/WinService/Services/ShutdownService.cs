@@ -181,29 +181,19 @@ public class ShutdownService(ILogger<ShutdownService> logger, IClock clock, IApi
     /// <para>endTime will be set NoLessonsUseTime minutes if all lessons are over</para>
     /// <para>endTime has a maximum of NoLessonsUseTime</para>
     /// </remarks>
-    private async Task<(Instant nextLessonStart, Instant nextLessonEnd)> GetNextLessonInfoAsync()
+    private Instant? GetNextLessonStart()
     {
-        _lessons = await apiManager.GetLessonsAsync();
-        var endTimes = _lessons.Select(x => x.End).Distinct().ToList();
         var startTimes = _lessons.Select(x => x.Start).Distinct().ToList();
         
         var now = clock.GetCurrentInstant();
-        // target needs to be a little in the past, otherwise double lessons will be skipped
-        var target = now.Minus(Duration.FromMinutes(3));
+        var closestStartTime = GetNearestFutureInstant(startTimes, now.Minus(Duration.FromMinutes(3)));
         
-        var closestStartTime = GetNearestFutureInstant(startTimes, target);
-        var closestEndTime = GetNearestFutureInstant(endTimes, target);
-        var noLessonsTime = now.Plus(Duration.FromMinutes(NoLessonsTime));
-        
-        // wait for a maximum of NoLessonsUseTime for recheck (prevent infinity waiting after user aborts shutdown)
-        return (closestStartTime, Instant.Min(noLessonsTime, closestEndTime));
+        return closestStartTime;
     }
     
-    private Instant GetNearestFutureInstant(List<Instant> instants, Instant? target = null)
+    private Instant? GetNearestFutureInstant(List<Instant> instants, Instant? target = null)
     {
         target ??= clock.GetCurrentInstant();
-        if (instants == null || instants.Count == 0)
-            throw new ArgumentException("The list of instants cannot be null or empty.");
 
         return instants
             .Where(instant => instant > target)
@@ -240,11 +230,8 @@ public class ShutdownService(ILogger<ShutdownService> logger, IClock clock, IApi
             try
             {
                 var now = clock.GetCurrentInstant();
-                var (lessonStart, _) = await GetNextLessonInfoAsync();
-                if (lessonStart > now)
-                {
-                    await pipeService.NotifyClients($"NextLesson_{lessonStart:HH:mm}");
-                }
+                var lessonStart = GetNextLessonStart();
+                if (lessonStart > now) await pipeService.NotifyClients($"NextLesson_{lessonStart:HH:mm}");
                 await pipeService.NotifyClients("shutdown");
             }
             catch (Exception e)
