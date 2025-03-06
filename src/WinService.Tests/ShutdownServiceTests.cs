@@ -39,7 +39,17 @@ public class ShutdownServiceTests
             }
         ]);
         
+        apiManager.Setup(mock => mock.GetSettingsAsync()).ReturnsAsync(new ApiModels.Settings
+        {
+            NoLessonsTime = 50,
+            DelayShutdown = false,
+            LessonGapMinutes = 20,
+            CheckUser = false
+        });
+        
         var shutdownService = new ShutdownService(new Mock<ILogger<ShutdownService>>().Object, new FakeClock(initialInstant), apiManager.Object, new Mock<IPipeService>().Object);
+        await shutdownService.LoadSettingsAsync();
+        
         var duration = await shutdownService.GetDurationUntilBreakAsync();
         Assert.Equal(Duration.FromHours(4), duration);
     }
@@ -73,7 +83,16 @@ public class ShutdownServiceTests
             }
         ]);
         
+        apiManager.Setup(mock => mock.GetSettingsAsync()).ReturnsAsync(new ApiModels.Settings
+        {
+            NoLessonsTime = 50,
+            DelayShutdown = false,
+            LessonGapMinutes = 20,
+            CheckUser = false
+        });
+        
         var shutdownService = new ShutdownService(new Mock<ILogger<ShutdownService>>().Object, new FakeClock(initialInstant), apiManager.Object, new Mock<IPipeService>().Object);
+        await shutdownService.LoadSettingsAsync();
         
         var duration = await shutdownService.GetDurationUntilBreakAsync();
         Assert.Equal(Duration.FromMinutes(90), duration);
@@ -85,6 +104,14 @@ public class ShutdownServiceTests
         var initialInstant = Instant.FromUtc(2025, 1, 29, 4, 0);
         var apiManager = new Mock<IApiManager>();
         
+        apiManager.Setup(mock => mock.GetSettingsAsync()).ReturnsAsync(new ApiModels.Settings
+        {
+            NoLessonsTime = 50,
+            DelayShutdown = false,
+            LessonGapMinutes = 20,
+            CheckUser = false
+        });
+        
         apiManager.Setup(mock => mock.GetLessonsAsync(null)).ReturnsAsync([
             new ApiModels.Lesson
             {
@@ -94,6 +121,7 @@ public class ShutdownServiceTests
         ]);
         
         var shutdownService = new ShutdownService(new Mock<ILogger<ShutdownService>>().Object, new FakeClock(initialInstant), apiManager.Object, new Mock<IPipeService>().Object);
+        await shutdownService.LoadSettingsAsync();
         
         var duration = await shutdownService.GetDurationUntilBreakAsync();
         Assert.Equal(Duration.Zero, duration);

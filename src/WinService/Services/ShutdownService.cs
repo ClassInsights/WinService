@@ -19,7 +19,7 @@ public class ShutdownService(ILogger<ShutdownService> logger, IClock clock, IApi
     {
         try
         {
-            _settings = await apiManager.GetSettingsAsync() ?? throw new ApplicationException("Failed to load settings");
+            await LoadSettingsAsync();
             await Task.WhenAll(CheckLifeSign(stoppingToken), StartShutdownLoop(stoppingToken));
         }
         catch (OperationCanceledException)
@@ -27,6 +27,8 @@ public class ShutdownService(ILogger<ShutdownService> logger, IClock clock, IApi
             // Expected
         }
     }
+
+    public async Task LoadSettingsAsync() => _settings = await apiManager.GetSettingsAsync() ?? throw new ApplicationException("Failed to load settings");
 
     private async Task CheckLifeSign(CancellationToken stoppingToken)
     {
