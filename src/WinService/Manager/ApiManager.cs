@@ -86,6 +86,13 @@ public class ApiManager: IApiManager
         return await response.Content.ReadFromJsonAsync(SourceGenerationContext.Default.Computer);
     }
 
+    public async Task<ApiModels.Settings?> GetSettingsAsync()
+    {
+        var response = await CallApiEndpointAsync("settings/dashboard", HttpMethod.Get);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync(SourceGenerationContext.Default.Settings);
+    }
+
     private async Task<HttpResponseMessage> CallApiEndpointAsync(string endpoint, HttpMethod method, HttpContent? content = null)
     {
         for (var i = 0; i < 3; i++)

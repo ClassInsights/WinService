@@ -9,9 +9,8 @@ namespace WinService.Services;
 
 public class ShutdownService(ILogger<ShutdownService> logger, IClock clock, IApiManager apiManager, IPipeService pipeService) : BackgroundService
 {
-    private const int NoLessonsTime = 50; // time how long pc should be usable after all lessons and max delay when recheck for lesson should be
-
     private readonly PeriodicTimer _timer = new (TimeSpan.FromMinutes(7));
+    private ApiModels.Settings? _settings;
     private int _counter;
     
     private List<ApiModels.Lesson> _lessons = [];
@@ -20,6 +19,7 @@ public class ShutdownService(ILogger<ShutdownService> logger, IClock clock, IApi
     {
         try
         {
+            _settings = await apiManager.GetSettingsAsync() ?? throw new ApplicationException("Failed to load settings");
             await Task.WhenAll(CheckLifeSign(stoppingToken), StartShutdownLoop(stoppingToken));
         }
         catch (OperationCanceledException)
@@ -30,7 +30,7 @@ public class ShutdownService(ILogger<ShutdownService> logger, IClock clock, IApi
 
     private async Task CheckLifeSign(CancellationToken stoppingToken)
     {
-        while (!stoppingToken.IsCancellationRequested && await _timer.WaitForNextTickAsync(stoppingToken))
+        while (!stoppingToken.IsCancellationRequested && _settings!.CheckUser && await _timer.WaitForNextTickAsync(stoppingToken))
         {
             if (!pipeService.Clients.IsEmpty)
             {
@@ -55,6 +55,9 @@ public class ShutdownService(ILogger<ShutdownService> logger, IClock clock, IApi
         await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
         while (await WaitUntilShutdownAsync(stoppingToken))
         {
+            if (_settings!.DelayShutdown)
+                await Task.Delay(TimeSpan.FromMinutes(_settings.ShutdownDelay), stoppingToken);
+            
             await SendShutdownAsync(true);
         }
     }
@@ -75,7 +78,7 @@ public class ShutdownService(ILogger<ShutdownService> logger, IClock clock, IApi
             if (lessonEndDuration == Duration.Zero)
             {
                 logger.LogInformation("All lessons are over, wait for NoLessonsUseTime");
-                await Task.Delay(TimeSpan.FromMinutes(NoLessonsTime), stoppingToken);
+                await Task.Delay(TimeSpan.FromMinutes(_settings!.NoLessonsTime), stoppingToken);
             }
             else
                 await Task.Delay(Duration.Min(updateLessonsInterval, lessonEndDuration).ToTimeSpan(), stoppingToken);
@@ -104,9 +107,8 @@ public class ShutdownService(ILogger<ShutdownService> logger, IClock clock, IApi
     /// If now is already within a qualifying break, returns Duration.Zero.
     /// If no break exists, returns the duration from now until the end of the last lesson.
     /// </summary>
-    /// <param name="gapMinutes">Time from which a break is defined in minutes</param>
     /// <returns>The duration until the first big break or until all lessons have finished.</returns>
-    private Duration GetTimeUntilBreakFromNow(int gapMinutes = 20)
+    private Duration GetTimeUntilBreakFromNow()
     {
         // Sort lessons by StartTime (and then by EndTime for safety).
         var sortedLessons = _lessons
@@ -115,7 +117,7 @@ public class ShutdownService(ILogger<ShutdownService> logger, IClock clock, IApi
             .ToList();
 
         // Define a 20-minute gap.
-        var bigBreakThreshold = Duration.FromMinutes(gapMinutes);
+        var bigBreakThreshold = Duration.FromMinutes(_settings!.LessonGapMinutes);
 
         // Get the current instant.
         var now = clock.GetCurrentInstant();
