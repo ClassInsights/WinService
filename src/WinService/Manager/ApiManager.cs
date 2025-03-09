@@ -2,6 +2,7 @@
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
 using WinService.Interfaces;
@@ -17,13 +18,15 @@ public class ApiManager: IApiManager
     private readonly HttpClient _httpClient = new();
     private readonly Lock _lock = new();
     private readonly ILogger<ApiManager> _logger;
+    private readonly IHostApplicationLifetime _appLifetime;
     public ApiModels.Room Room { get; }
     public ApiModels.Computer? Computer {get; set; }
 
-    public ApiManager(ILogger<ApiManager> logger)
+    public ApiManager(ILogger<ApiManager> logger, IHostApplicationLifetime appLifetime)
     {
         _logger = logger;
-        
+        _appLifetime = appLifetime;
+
         using var key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\ClassInsights");
         ApiUrl = key?.GetValue("ApiUrl")?.ToString();
         if (ApiUrl == null)
@@ -97,18 +100,31 @@ public class ApiManager: IApiManager
     {
         for (var i = 0; i < 3; i++)
         {
-            var accessToken = await GetAccessTokenAsync();
+            try
+            {
+                var accessToken = await GetAccessTokenAsync();
 
-            var request = new HttpRequestMessage(method, endpoint) { Content = content };
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+                var request = new HttpRequestMessage(method, endpoint) { Content = content };
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 
-            var response = await _httpClient.SendAsync(request);
+                var response = await _httpClient.SendAsync(request);
 
-            if (response.StatusCode != System.Net.HttpStatusCode.Unauthorized) return response;
-            _logger.LogWarning("Access token expired. Retrying...");
-            lock (_lock) Token = null; // Force re-authentication
+                if (response.StatusCode != System.Net.HttpStatusCode.Unauthorized) return response;
+                _logger.LogWarning("Access token expired. Retrying...");
+                lock (_lock) Token = null; // Force re-authentication
+            }
+            catch (HttpRequestException ex)
+            {
+                if (ex.HttpRequestError == HttpRequestError.ConnectionError)
+                {
+                    _logger.LogCritical("Local API is unavailable");
+                    _appLifetime.StopApplication();
+                }
+            }
         }
-        throw new HttpRequestException("Credentials invalid");
+        _logger.LogCritical("Credentials are invalid");
+        _appLifetime.StopApplication();
+        throw new ApplicationException();
     }
     
     private async Task<string> GetAccessTokenAsync()
