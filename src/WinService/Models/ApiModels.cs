@@ -57,13 +57,3 @@ public class ApiModels
         public int ShutdownDelay { get; set; }
     }
 }
-
-[JsonSerializable(typeof(ApiModels.Class))]
-[JsonSerializable(typeof(ApiModels.Lesson))]
-[JsonSerializable(typeof(List<ApiModels.Lesson>))]
-[JsonSerializable(typeof(ApiModels.Computer))]
-[JsonSerializable(typeof(ApiModels.Room))]
-[JsonSerializable(typeof(ApiModels.Settings))]
-[JsonSourceGenerationOptions(WriteIndented = true, PropertyNameCaseInsensitive = true,
-    NumberHandling = JsonNumberHandling.AllowReadingFromString, PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
-internal partial class SourceGenerationContext : JsonSerializerContext;

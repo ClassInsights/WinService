@@ -1,8 +1,10 @@
 using Microsoft.Extensions.Hosting;
 using System.Collections.Concurrent;
 using System.IO.Pipes;
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using WinService.Interfaces;
+using WinService.Models;
 
 namespace WinService.Services;
 
@@ -95,13 +97,13 @@ public class PipeService(ILogger<PipeService> logger): BackgroundService, IPipeS
         }
     }
 
-    public async Task NotifyClients(string message)
+    public async Task NotifyClients(PipeModels.IPacket packet)
     {
         foreach (var client in Clients)
         {
             try
             {
-                await client.Value.Writer.WriteLineAsync(message);
+                await client.Value.Writer.WriteLineAsync(JsonSerializer.Serialize(packet, SourceGenerationContext.Default.IPacket));
             }
             catch (IOException e)
             {

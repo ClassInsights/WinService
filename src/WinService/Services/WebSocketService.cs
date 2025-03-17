@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using WinService.Interfaces;
 using WinService.Manager;
+using WinService.Models;
 
 namespace WinService.Services;
 
@@ -90,7 +91,7 @@ public class WebSocketService(ILogger<WebSocketService> logger, IApiManager apiM
                         Process.Start("shutdown", "/r /f /t 0");
                         break;
                     case "logoff":
-                        await pipeService.NotifyClients("logoff");
+                        await pipeService.NotifyClients(new PipeModels.Packet<PipeModels.LogOffData>());
                         break;
                 }
             }

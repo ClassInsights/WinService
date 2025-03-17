@@ -48,7 +48,7 @@ public class ShutdownService(ILogger<ShutdownService> logger, IClock clock, IApi
                 continue;
             
             _counter = 0;
-            await SendShutdownAsync();
+            await SendShutdownAsync(PipeModels.Reasons.NoUser);
         }
     }
 
@@ -60,7 +60,7 @@ public class ShutdownService(ILogger<ShutdownService> logger, IClock clock, IApi
             if (_settings!.DelayShutdown)
                 await Task.Delay(TimeSpan.FromMinutes(_settings.ShutdownDelay), stoppingToken);
             
-            await SendShutdownAsync(true);
+            await SendShutdownAsync(PipeModels.Reasons.LessonsOver, true);
         }
     }
     
@@ -211,7 +211,7 @@ public class ShutdownService(ILogger<ShutdownService> logger, IClock clock, IApi
     ///     If no user is logged in it shuts down the pc immediately
     /// </summary>
     /// <returns></returns>
-    private async Task SendShutdownAsync(bool lessonCheck = false)
+    private async Task SendShutdownAsync(PipeModels.Reasons reason, bool lessonCheck = false)
     {
         if (lessonCheck)
         {
@@ -235,8 +235,17 @@ public class ShutdownService(ILogger<ShutdownService> logger, IClock clock, IApi
             {
                 var now = clock.GetCurrentInstant();
                 var lessonStart = GetNextLessonStart();
-                if (lessonStart > now) await pipeService.NotifyClients($"NextLesson_{lessonStart:HH:mm}");
-                await pipeService.NotifyClients("shutdown");
+
+                var packet = new PipeModels.Packet<PipeModels.ShutdownData>
+                {
+                    Data = new PipeModels.ShutdownData
+                    {
+                        Reason = reason,
+                        NextLesson = lessonStart > now ? $"{lessonStart:HH:mm}" : null
+                    }
+                };
+                
+                await pipeService.NotifyClients(packet);
             }
             catch (Exception e)
             {
