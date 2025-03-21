@@ -8,15 +8,19 @@ using WinService.Models;
 
 namespace WinService.Services;
 
-public class PipeService(ILogger<PipeService> logger): BackgroundService, IPipeService
+public class PipeService(ILogger<PipeService> logger, IApiManager apiManager): BackgroundService, IPipeService
 {
      // Concurrent dictionary to store active clients
     public ConcurrentDictionary<string, (StreamWriter Writer, DateTime LastHeartbeat)> Clients { get; } = new();
     private readonly TimeSpan _heartbeatInterval = TimeSpan.FromSeconds(10);
     private readonly TimeSpan _timeoutInterval = TimeSpan.FromSeconds(30);
+
+    private ApiModels.Settings? _settings;
     
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        _settings = await apiManager.GetSettingsAsync();
+        
         // Start heartbeat monitoring in a separate task
         _ = Task.Run(() => HeartbeatMonitor(stoppingToken), stoppingToken);
 
@@ -45,7 +49,7 @@ public class PipeService(ILogger<PipeService> logger): BackgroundService, IPipeS
         try
         {
             using var reader = new StreamReader(server);
-            await using var writer = new StreamWriter(server);
+            var writer = new StreamWriter(server);
             writer.AutoFlush = true;
 
             // Read client username
@@ -58,6 +62,18 @@ public class PipeService(ILogger<PipeService> logger): BackgroundService, IPipeS
             }
             
             logger.LogInformation("Client connected: {userName}", userName);
+
+            if (_settings?.CheckAfk is true)
+            {
+                // enable AFK detection
+                _ = Task.Run(() => writer.WriteLineAsync(JsonSerializer.Serialize(new PipeModels.Packet<PipeModels.AfkData>
+                {
+                    Data = new PipeModels.AfkData
+                    {
+                        Timeout = _settings.AfkTimeout
+                    }
+                }, SourceGenerationContext.Default.IPacket)));
+            }
 
             // Add the client to the dictionary
             Clients[userName] = (writer, DateTime.UtcNow);
@@ -88,7 +104,8 @@ public class PipeService(ILogger<PipeService> logger): BackgroundService, IPipeS
             if (!string.IsNullOrEmpty(userName))
             {
                 // Remove the client on disconnect
-                Clients.TryRemove(userName, out _);
+                if( Clients.TryRemove(userName, out var client))
+                    await client.Writer.DisposeAsync();
                 logger.LogInformation("Client {userName} removed from active clients.", userName);
             }
 

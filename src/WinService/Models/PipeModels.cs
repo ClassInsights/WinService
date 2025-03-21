@@ -6,6 +6,7 @@ public class PipeModels
 {
     [JsonDerivedType(typeof(Packet<ShutdownData>))]
     [JsonDerivedType(typeof(Packet<LogOffData>))]
+    [JsonDerivedType(typeof(Packet<AfkData>))]
     public interface IPacket
     {
         Type PacketType { get; }
@@ -19,6 +20,8 @@ public class PipeModels
             {
                 if (typeof(T) == typeof(ShutdownData))
                     return Type.Shutdown;
+                if (typeof(T) == typeof(AfkData))
+                    return Type.Afk;
                 if (typeof(T) == typeof(LogOffData))
                     return Type.Logoff;
                 return Type.None;
@@ -36,6 +39,11 @@ public class PipeModels
 
     public class LogOffData;
 
+    public class AfkData
+    {
+        public int Timeout { get; set; }
+    }
+
     public enum Reasons
     {
         LessonsOver,
@@ -46,6 +54,7 @@ public class PipeModels
     {
         Shutdown,
         Logoff,
+        Afk,
         None
     }
 }

@@ -11,6 +11,7 @@ namespace WinService.Models;
 [JsonSerializable(typeof(PipeModels.IPacket))]
 [JsonSerializable(typeof(PipeModels.Packet<PipeModels.ShutdownData>))]
 [JsonSerializable(typeof(PipeModels.Packet<PipeModels.LogOffData>))]
+[JsonSerializable(typeof(PipeModels.Packet<PipeModels.AfkData>))]
 [JsonSourceGenerationOptions(WriteIndented = false, PropertyNameCaseInsensitive = true,
     NumberHandling = JsonNumberHandling.AllowReadingFromString, PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
 internal partial class SourceGenerationContext : JsonSerializerContext;

@@ -51,7 +51,7 @@ public class ApiModels
         public int LessonGapMinutes { get; set; }
         public int NoLessonsTime { get; set; }
         public bool CheckUser { get; set; }
-        public bool CheckAfk { get; set; } // todo: implement AFK check
+        public bool CheckAfk { get; set; }
         public int AfkTimeout { get; set; }
         public bool DelayShutdown { get; set; }
         public int ShutdownDelay { get; set; }
