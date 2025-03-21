@@ -251,6 +251,6 @@ public class ShutdownService(ILogger<ShutdownService> logger, IClock clock, IApi
             {
                 logger.LogError(e, "Failed to send Shutdown via pipes: {Message}", e.Message);
             }
-        } else Process.Start("shutdown", "/s /f /t 60");
+        } else Process.Start("shutdown", "/s /t 60 /c \"Fehlfunktion! Der Computer wird in 60 Sekunden heruntergefahren. Bitte speichern Sie alle wichtigen Daten! Der Shutdown kann mit dem Befehl 'shutdown /a' abgebrochen werden. Diese Nachricht sollten Sie nicht sehen, bitte melden Sie dies der IT-Abteilung! ~ ClassInsights\"");
     }
 }
