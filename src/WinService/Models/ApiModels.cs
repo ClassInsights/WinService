@@ -42,8 +42,8 @@ public class ApiModels
     public class Room
     {
         public int RoomId { get; set; }
-        public string Name { get; set; } = null!;
-        public string LongName { get; set; } = null!;
+        public string DisplayName { get; set; } = null!;
+        public bool Enabled { get; set; }
     }
     
     public class Settings

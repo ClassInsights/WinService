@@ -41,7 +41,12 @@ public class ApiManager: IApiManager
     {
         if (await GetRoomAsync(Environment.MachineName) is { } room)
         {
-            _logger.LogInformation("Room: {roomName} with Id {roomId}", room.Name, room.RoomId);
+            _logger.LogInformation("Room: {roomName} with Id {roomId}", room.DisplayName, room.RoomId);
+            if (room.Enabled)
+                return room;
+            
+            _logger.LogInformation("Room: {roomName} is disabled", room.DisplayName);
+            _appLifetime.StopApplication();
             return room;
         }
         
