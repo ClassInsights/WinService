@@ -10,7 +10,7 @@ using WinService.Models;
 
 namespace WinService.Services;
 
-public class WebSocketService(ILogger<WebSocketService> logger, IApiManager apiManager, IPipeService pipeService): BackgroundService
+public class WebSocketService(ILogger<WebSocketService> logger, IHostApplicationLifetime applicationLifetime, IApiManager apiManager, IPipeService pipeService): BackgroundService
 {
     private readonly EnergyManager _energyManager = new();
     private readonly PeriodicTimer _timer = new(TimeSpan.FromSeconds(1));
@@ -30,10 +30,17 @@ public class WebSocketService(ILogger<WebSocketService> logger, IApiManager apiM
         var uri = new Uri(apiManager.ApiUrl ?? string.Empty);
         if (uri == null)
             throw new Exception("Invalid API URL");
+
+        if (uri.Scheme != "https")
+        {
+            logger.LogCritical("Specified URL is not HTTPS");
+            applicationLifetime.StopApplication();
+            return;
+        }
         
         try
         {
-            await ConnectAsync($"ws://{uri.Authority}/ws/computers", stoppingToken); // todo: use wss:// as default
+            await ConnectAsync($"wss://{uri.Authority}/ws/computers", stoppingToken);
             
             // start listening for commands
             _ = Task.Run(() => ReadCommandsAsync(stoppingToken), stoppingToken);
