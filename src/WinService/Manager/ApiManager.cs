@@ -39,19 +39,25 @@ public class ApiManager: IApiManager
 
     private async Task<ApiModels.Room> GetRoomAsync()
     {
-        if (await GetRoomAsync(Environment.MachineName) is { } room)
+        try
         {
-            _logger.LogInformation("Room: {roomName} with Id {roomId}", room.DisplayName, room.RoomId);
-            if (room.Enabled)
+            if (await GetRoomAsync(Environment.MachineName) is { } room)
+            {
+                _logger.LogInformation("Room: {roomName} with Id {roomId}", room.DisplayName, room.RoomId);
+                if (room.Enabled)
+                    return room;
+                
+                _logger.LogInformation("Room: {roomName} is disabled", room.DisplayName);
+                _appLifetime.StopApplication();
                 return room;
-            
-            _logger.LogInformation("Room: {roomName} is disabled", room.DisplayName);
-            _appLifetime.StopApplication();
-            return room;
+            }
         }
-        
-        _logger.LogCritical("No room found");
-        throw new Exception("No room found");
+        catch (HttpRequestException)
+        {
+            _logger.LogCritical("No room found, stopping service");
+            _appLifetime.StopApplication(); // maybe send user an information via WinClient as this is unexpected?
+        }
+        return new ApiModels.Room();
     }
     
     private async Task<ApiModels.Computer?> GetComputerAsync()
