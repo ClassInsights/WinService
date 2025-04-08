@@ -161,8 +161,10 @@ public class ApiManager: IApiManager
         if (string.IsNullOrEmpty(token))
             throw new Exception("Token not found");
         
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(token);
-        var response = await _httpClient.GetAsync("login/computer");
+        var response = await _httpClient.PostAsJsonAsync("login/computer", new
+        {
+            computer_token = token
+        });
         response.EnsureSuccessStatusCode();
         
         var authToken = await response.Content.ReadAsStringAsync();
