@@ -44,7 +44,8 @@ public class ShutdownServiceTests
             NoLessonsTime = 50,
             DelayShutdown = false,
             LessonGapMinutes = 20,
-            CheckUser = false
+            CheckUser = false,
+            CheckGap = true
         });
         
         var shutdownService = new ShutdownService(new Mock<ILogger<ShutdownService>>().Object, new FakeClock(initialInstant), apiManager.Object, new Mock<IPipeService>().Object);
@@ -88,7 +89,8 @@ public class ShutdownServiceTests
             NoLessonsTime = 50,
             DelayShutdown = false,
             LessonGapMinutes = 20,
-            CheckUser = false
+            CheckUser = false,
+            CheckGap = true
         });
         
         var shutdownService = new ShutdownService(new Mock<ILogger<ShutdownService>>().Object, new FakeClock(initialInstant), apiManager.Object, new Mock<IPipeService>().Object);
@@ -109,7 +111,8 @@ public class ShutdownServiceTests
             NoLessonsTime = 50,
             DelayShutdown = false,
             LessonGapMinutes = 20,
-            CheckUser = false
+            CheckUser = false,
+            CheckGap = true
         });
         
         apiManager.Setup(mock => mock.GetLessonsAsync(null)).ReturnsAsync([
