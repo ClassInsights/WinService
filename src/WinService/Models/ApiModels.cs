@@ -48,6 +48,7 @@ public class ApiModels
     
     public class Settings
     {
+        public bool CheckGap { get; set; }
         public int LessonGapMinutes { get; set; }
         public int NoLessonsTime { get; set; }
         public bool CheckUser { get; set; }

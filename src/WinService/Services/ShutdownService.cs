@@ -118,8 +118,8 @@ public class ShutdownService(ILogger<ShutdownService> logger, IClock clock, IApi
             .ThenBy(lesson => lesson.End)
             .ToList();
 
-        // Define a 20-minute gap.
-        var bigBreakThreshold = Duration.FromMinutes(_settings!.LessonGapMinutes);
+        // Define the gap.
+        var bigBreakThreshold = _settings!.CheckGap ? Duration.FromMinutes(_settings!.LessonGapMinutes) : Duration.MaxValue;
 
         // Get the current instant.
         var now = clock.GetCurrentInstant();
