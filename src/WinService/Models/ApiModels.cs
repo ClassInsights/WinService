@@ -57,4 +57,10 @@ public class ApiModels
         public bool DelayShutdown { get; set; }
         public int ShutdownDelay { get; set; }
     }
+
+    public class Client
+    {
+        [JsonPropertyName("client_version")]
+        public string ClientVersion { get; set; } = null!;
+    }
 }

@@ -27,11 +27,15 @@ builder.Logging.AddEventLog(new EventLogSettings
 builder.Services.AddSingleton<IClock>(SystemClock.Instance);
 builder.Services.AddSingleton<IApiManager, ApiManager>();
 builder.Services.AddSingleton<IPipeService, PipeService>();
+builder.Services.AddSingleton<IVersionManager, VersionManager>();
 
 builder.Services.AddHostedService<PipeService>(provider => (PipeService) provider.GetRequiredService<IPipeService>());
 builder.Services.AddHostedService<HeartbeatService>();
 builder.Services.AddHostedService<ShutdownService>();
 builder.Services.AddHostedService<WebSocketService>();
 
-var host = builder.Build();
+using var host = builder.Build();
+var versionManager = host.Services.GetRequiredService<IVersionManager>();
+
+_ = Task.Run(versionManager.UpdateAsync);
 host.Run();

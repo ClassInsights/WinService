@@ -8,6 +8,7 @@ namespace WinService.Models;
 [JsonSerializable(typeof(ApiModels.Computer))]
 [JsonSerializable(typeof(ApiModels.Room))]
 [JsonSerializable(typeof(ApiModels.Settings))]
+[JsonSerializable(typeof(ApiModels.Client))]
 [JsonSerializable(typeof(PipeModels.IPacket))]
 [JsonSerializable(typeof(PipeModels.Packet<PipeModels.ShutdownData>))]
 [JsonSerializable(typeof(PipeModels.Packet<PipeModels.LogOffData>))]

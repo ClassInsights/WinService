@@ -107,6 +107,20 @@ public class ApiManager: IApiManager
         return await response.Content.ReadFromJsonAsync(SourceGenerationContext.Default.Settings);
     }
 
+    public async Task<ApiModels.Client?> GetClientAsync()
+    {
+        var response = await CallApiEndpointAsync("client/version", HttpMethod.Get);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync(SourceGenerationContext.Default.Client);
+    }
+
+    public async Task<byte[]> GetClientInstallerAsync()
+    {
+        var response = await CallApiEndpointAsync("client/download", HttpMethod.Get);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadAsByteArrayAsync();
+    }
+
     private async Task<HttpResponseMessage> CallApiEndpointAsync(string endpoint, HttpMethod method, HttpContent? content = null)
     {
         for (var i = 0; i < 3; i++)
