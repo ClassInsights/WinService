@@ -10,7 +10,7 @@ public interface IApiManager
     Task<ApiModels.Client?> GetClientAsync();
     Task<byte[]> GetClientInstallerAsync();
     ApiModels.Computer? Computer { get; set; }
-    ApiModels.Room Room { get; }
+    ApiModels.Room? Room { get; }
     string? ApiUrl { get; }
     string? Token { get; }
 }

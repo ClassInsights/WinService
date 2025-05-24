@@ -19,7 +19,7 @@ public class ApiManager: IApiManager
     private readonly Lock _lock = new();
     private readonly ILogger<ApiManager> _logger;
     private readonly IHostApplicationLifetime _appLifetime;
-    public ApiModels.Room Room { get; }
+    public ApiModels.Room? Room { get; private set; }
     public ApiModels.Computer? Computer {get; set; }
 
     public ApiManager(ILogger<ApiManager> logger, IHostApplicationLifetime appLifetime)
@@ -33,31 +33,38 @@ public class ApiManager: IApiManager
             throw new Exception("API url could not be found");
         
         _httpClient.BaseAddress = new Uri($"{ApiUrl}/api/");
-        Room = Task.Run(GetRoomAsync).GetAwaiter().GetResult();
+        // start searching for room
+        _ = Task.Run(FindRoomAsync);
         Computer = Task.Run(GetComputerAsync).GetAwaiter().GetResult();
     }
 
-    private async Task<ApiModels.Room> GetRoomAsync()
+    private async Task FindRoomAsync()
     {
         try
         {
-            if (await GetRoomAsync(Environment.MachineName) is { } room)
+            do
             {
-                _logger.LogInformation("Room: {roomName} with Id {roomId}", room.DisplayName, room.RoomId);
-                if (room.Enabled)
-                    return room;
+                if (await GetRoomAsync(Environment.MachineName) is not { } room)
+                {
+                    await Task.Delay(60 * 1000 * 5); // wait 5 minutes before trying again
+                    continue;
+                }
                 
-                _logger.LogInformation("Room: {roomName} is disabled", room.DisplayName);
-                _appLifetime.StopApplication();
-                return room;
-            }
+                Room = room;
+                _logger.LogInformation("Room: {roomName} with Id {roomId}", room.DisplayName, room.RoomId);
+                if (!room.Enabled)
+                {
+                    _logger.LogInformation("Room: {roomName} is disabled", room.DisplayName);
+                    _appLifetime.StopApplication();
+                }
+                break;
+            } while (Room == null);
         }
         catch (HttpRequestException)
         {
-            _logger.LogCritical("No room found, stopping service");
+            _logger.LogCritical("Error while searching for room, stopping service");
             _appLifetime.StopApplication(); // maybe send user an information via WinClient as this is unexpected?
         }
-        return new ApiModels.Room();
     }
     
     private async Task<ApiModels.Computer?> GetComputerAsync()
@@ -75,20 +82,21 @@ public class ApiManager: IApiManager
     private async Task<ApiModels.Room?> GetRoomAsync(string name)
     {
         var response = await CallApiEndpointAsync($"rooms/{name}", HttpMethod.Get);
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode) return null;
         return await response.Content.ReadFromJsonAsync(SourceGenerationContext.Default.Room);
     }
 
     private async Task<ApiModels.Computer?> GetComputerAsync(string name)
     {
         var response = await CallApiEndpointAsync($"computers/{name}", HttpMethod.Get);
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode) return null;
         return await response.Content.ReadFromJsonAsync(SourceGenerationContext.Default.Computer);
     }
 
     public async Task<List<ApiModels.Lesson>> GetLessonsAsync(int? room = null)
     {
-        var response = await CallApiEndpointAsync($"rooms/{room ?? Room.RoomId}/lessons", HttpMethod.Get);
+        if (room == null && Room == null) return [];
+        var response = await CallApiEndpointAsync($"rooms/{room ?? Room!.RoomId}/lessons", HttpMethod.Get);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync(SourceGenerationContext.Default.ListLesson) ?? [];
     }

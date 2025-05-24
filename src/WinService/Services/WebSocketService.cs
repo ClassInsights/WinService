@@ -16,8 +16,18 @@ public class WebSocketService(ILogger<WebSocketService> logger, IHostApplication
     private readonly PeriodicTimer _timer = new(TimeSpan.FromSeconds(1));
     private ClientWebSocket _webSocket = new();
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken) => await RunAsync(stoppingToken);
-    
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        try
+        {
+            await RunAsync(stoppingToken);
+        }
+        catch (TaskCanceledException)
+        {
+            // ignore
+        }
+    }
+
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
         _timer.Dispose();
@@ -37,16 +47,21 @@ public class WebSocketService(ILogger<WebSocketService> logger, IHostApplication
             applicationLifetime.StopApplication();
             return;
         }
-        
+
         try
         {
             await ConnectAsync($"wss://{uri.Authority}/ws/computers", stoppingToken);
-            
+
             // start listening for commands
             _ = Task.Run(() => ReadCommandsAsync(stoppingToken), stoppingToken);
-            
+
             // send heartbeats
-            while (!stoppingToken.IsCancellationRequested && await _timer.WaitForNextTickAsync(stoppingToken)) await SendHeartbeatAsync();
+            while (!stoppingToken.IsCancellationRequested && await _timer.WaitForNextTickAsync(stoppingToken))
+                await SendHeartbeatAsync();
+        }
+        catch (TaskCanceledException)
+        {
+            // ignore
         }
         catch (Exception e)
         {
@@ -116,7 +131,7 @@ public class WebSocketService(ILogger<WebSocketService> logger, IHostApplication
 
     private async Task SendHeartbeatAsync()
     {
-        if (_webSocket.State != WebSocketState.Open) return;
+        if (_webSocket.State != WebSocketState.Open || apiManager.Computer == null) return;
 
         try
         {
@@ -124,10 +139,10 @@ public class WebSocketService(ILogger<WebSocketService> logger, IHostApplication
 
             var buffer = new ArraySegment<byte>(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(new
             {
-                apiManager.Computer?.ComputerId,
+                apiManager.Computer.ComputerId,
                 Name = Environment.MachineName,
                 Type = "Heartbeat",
-                Room = apiManager.Room.RoomId,
+                Room = apiManager.Room?.RoomId ?? 0,
                 UpTime = DateTime.Now.AddMilliseconds(-1 * Environment.TickCount64),
                 Data = new
                 {

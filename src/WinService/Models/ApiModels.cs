@@ -29,7 +29,7 @@ public class ApiModels
     public class Computer // yyyy-MM-ddTHH:mm:ss.fffZ
     {
         public int? ComputerId { get; set; }
-        public int RoomId { get; set; }
+        public int? RoomId { get; set; }
         public string Name { get; set; } = null!;
         public string MacAddress { get; set; } = null!;
         public string IpAddress { get; set; } = null!;
