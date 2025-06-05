@@ -1,6 +1,8 @@
 using Microsoft.Extensions.Hosting;
 using System.Collections.Concurrent;
 using System.IO.Pipes;
+using System.Security.AccessControl;
+using System.Security.Principal;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using WinService.Interfaces;
@@ -26,14 +28,20 @@ public class PipeService(ILogger<PipeService> logger, IApiManager apiManager): B
 
         while (!stoppingToken.IsCancellationRequested) // Continuously accept connections
         {
-            var server = new NamedPipeServerStream(
+            var ps = new PipeSecurity();
+            ps.AddAccessRule(new PipeAccessRule(new SecurityIdentifier(WellKnownSidType.WorldSid, null), PipeAccessRights.ReadWrite | PipeAccessRights.CreateNewInstance, AccessControlType.Allow));
+            
+            var server = NamedPipeServerStreamAcl.Create(
                 "ClassInsights",
                 PipeDirection.InOut,
                 NamedPipeServerStream.MaxAllowedServerInstances,
                 PipeTransmissionMode.Message,
-                PipeOptions.Asynchronous
+                PipeOptions.Asynchronous,
+                0,
+                0,
+                ps
             );
-
+            
             await server.WaitForConnectionAsync(stoppingToken); // Wait for a new client
             server.ReadMode = PipeTransmissionMode.Message;
             
