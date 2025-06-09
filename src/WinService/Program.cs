@@ -33,6 +33,7 @@ builder.Services.AddHostedService<PipeService>(provider => (PipeService) provide
 builder.Services.AddHostedService<HeartbeatService>();
 builder.Services.AddHostedService<ShutdownService>();
 builder.Services.AddHostedService<WebSocketService>();
+builder.Services.AddHostedService<HibernationService>();
 
 using var host = builder.Build();
 var versionManager = host.Services.GetRequiredService<IVersionManager>();
