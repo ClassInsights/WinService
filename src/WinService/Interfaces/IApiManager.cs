@@ -9,6 +9,7 @@ public interface IApiManager
     Task<ApiModels.Computer?> UpdateComputer(ApiModels.Computer request);
     Task<ApiModels.Client?> GetClientAsync();
     Task<byte[]> GetClientInstallerAsync();
+    Task BatchLogs(List<ApiModels.ComputerLog> logs);
     ApiModels.Computer? Computer { get; set; }
     ApiModels.Room? Room { get; }
     string? ApiUrl { get; }

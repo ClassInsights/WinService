@@ -63,4 +63,16 @@ public class ApiModels
         [JsonPropertyName("client_version")]
         public string ClientVersion { get; set; } = null!;
     }
+    
+    public class ComputerLog
+    {
+        public long? ComputerId { get; set; }
+        [JsonConverter(typeof(NodaTimeDefaultJsonConverterFactory))]
+        public Instant Timestamp { get; set; }
+
+        public string Category { get; set; } = null!;
+        public string Level { get; set; } = null!;
+        public string Message { get; set; } = null!;
+        public string? Details { get; set; }
+    }
 }
