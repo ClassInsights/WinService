@@ -1,3 +1,4 @@
+using System.DirectoryServices;
 using Microsoft.Extensions.Hosting;
 using System.Net;
 using System.Net.NetworkInformation;
@@ -8,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using NodaTime;
 using WinService.Interfaces;
 using WinService.Models;
+using System.DirectoryServices.AccountManagement;
 
 namespace WinService.Services;
 
@@ -38,7 +40,8 @@ public class HeartbeatService(ILogger<HeartbeatService> logger, IClock clock, IA
                     MacAddress = GetMacAddress(),
                     IpAddress = GetLocalIpAddress(),
                     LastUser = pipeService.GetLastUser() ?? WindowsIdentity.GetCurrent().Name,
-                    Version = Assembly.GetExecutingAssembly().GetName().Version?.ToString()
+                    Version = Assembly.GetExecutingAssembly().GetName().Version?.ToString(),
+                    OrganizationUnit = GetComputerOu()
                 });
 
                 if (computer == null)
@@ -53,6 +56,26 @@ public class HeartbeatService(ILogger<HeartbeatService> logger, IClock clock, IA
         catch (Exception e)
         {
             logger.LogError(e, "Heartbeat failed with error: {Message}", e.Message);
+        }
+    }
+
+    private string? GetComputerOu()
+    {
+        try
+        {
+            using var context = new PrincipalContext(ContextType.Domain);
+            using var computer = ComputerPrincipal.FindByIdentity(context, Environment.MachineName);
+            if (computer?.GetUnderlyingObject() is not DirectoryEntry de ||
+                de.Properties["distinguishedName"].Count <= 0) return null;
+            
+            var dn = de.Properties["distinguishedName"][0]?.ToString();
+            var ouString = dn?[(dn.IndexOf(',') + 1)..];
+            return ouString;
+        }
+        catch (Exception e)
+        {
+            logger.LogError("Failed to fetch OU of computer: {message}", e.Message);
+            return null;
         }
     }
 

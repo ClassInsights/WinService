@@ -28,8 +28,8 @@ public class ApiModels
 
     public class Computer // yyyy-MM-ddTHH:mm:ss.fffZ
     {
-        public int? ComputerId { get; set; }
-        public int? RoomId { get; set; }
+        public long? ComputerId { get; set; }
+        public long? RoomId { get; set; }
         public string Name { get; set; } = null!;
         public string MacAddress { get; set; } = null!;
         public string IpAddress { get; set; } = null!;
@@ -37,6 +37,7 @@ public class ApiModels
         public Instant LastSeen { get; set; }
         public string LastUser { get; set; } = null!;
         public string? Version { get; set; }
+        public string? OrganizationUnit { get; set; }
     }
 
     public class Room
