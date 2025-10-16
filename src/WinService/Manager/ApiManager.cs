@@ -131,7 +131,9 @@ public class ApiManager: IApiManager
 
     public async Task BatchLogs(List<ApiModels.ComputerLog> logs)
     {
-        var response = await CallApiEndpointAsync($"computers/{Computer?.ComputerId}/logs/batch", HttpMethod.Post, new StringContent(JsonSerializer.Serialize(logs, SourceGenerationContext.Default.ListComputerLog), Encoding.UTF8, "application/json"));
+        var json = JsonSerializer.Serialize(logs, SourceGenerationContext.Default.ListComputerLog);
+        using var content = new StringContent(json, Encoding.UTF8, "application/json");
+        var response = await CallApiEndpointAsync($"computers/{Computer?.ComputerId}/logs/batch", HttpMethod.Post, content);
         response.EnsureSuccessStatusCode();
     }
 

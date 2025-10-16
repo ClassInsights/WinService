@@ -15,7 +15,7 @@ namespace WinService.Services;
 
 public class HeartbeatService(ILogger<HeartbeatService> logger, IClock clock, IApiManager apiManager, IPipeService pipeService): BackgroundService
 {
-    private readonly PeriodicTimer _timer = new (TimeSpan.FromSeconds(new Random().Next(20, 60)));
+    private readonly PeriodicTimer _timer = new (TimeSpan.FromSeconds(new Random().Next(600, 1200)));
     
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {

@@ -32,8 +32,12 @@ builder.Services.AddSingleton<IApiManager, ApiManager>();
 builder.Services.AddSingleton<IPipeService, PipeService>();
 builder.Services.AddSingleton<IVersionManager, VersionManager>();
 
-builder.Services.AddSingleton(new BlockingCollection<ApiModels.ComputerLog>(boundedCapacity: 1000));
-builder.Services.AddSingleton<ILoggerProvider>(provider => new HttpBatchLoggerProvider(provider.GetRequiredService<IClock>(), provider.GetRequiredService<BlockingCollection<ApiModels.ComputerLog>>()));
+builder.Services.AddSingleton(new BlockingCollection<ApiModels.ComputerLog>(boundedCapacity: 2000));
+
+builder.Services.AddSingleton<ILoggerProvider>(provider => 
+    new HttpBatchLoggerProvider(
+        provider.GetRequiredService<IClock>(),
+        provider.GetRequiredService<BlockingCollection<ApiModels.ComputerLog>>()));
 
 builder.Services.AddHostedService<PipeService>(provider => (PipeService) provider.GetRequiredService<IPipeService>());
 builder.Services.AddHostedService<HeartbeatService>();
