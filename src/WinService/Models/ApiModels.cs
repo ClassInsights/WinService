@@ -4,7 +4,7 @@ using NodaTime.Serialization.SystemTextJson;
 
 namespace WinService.Models;
 
-public class ApiModels
+public class ApiModels // todo: use long instead of int => fix api models
 {
     public class Class
     {

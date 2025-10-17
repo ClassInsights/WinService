@@ -79,7 +79,7 @@ public class ShutdownService(ILogger<ShutdownService> logger, IClock clock, IApi
             // if all lessons are over, wait for NoLessonsUseTime
             if (lessonEndDuration == Duration.Zero)
             {
-                logger.LogInformation("All lessons are over, wait for NoLessonsUseTime");
+                logger.LogInformation("All lessons are over, wait for NoLessonsUseTime ({Time} minutes)", _settings!.NoLessonsTime);
                 await Task.Delay(TimeSpan.FromMinutes(_settings!.NoLessonsTime), stoppingToken);
             }
             else
@@ -257,7 +257,7 @@ public class ShutdownService(ILogger<ShutdownService> logger, IClock clock, IApi
             Process.Start("shutdown", "/s /t 60 /c \"Fehlfunktion! Der Computer wird in 60 Sekunden heruntergefahren. Bitte speichern Sie alle wichtigen Daten! Der Shutdown kann mit dem Befehl 'shutdown /a' abgebrochen werden. Diese Nachricht sollten Sie nicht sehen, bitte melden Sie dies der IT-Abteilung! ~ ClassInsights\"");
             try
             {
-                await Task.Delay(120000);
+                await Task.Delay(100000);
             }
             catch (OperationCanceledException)
             {
