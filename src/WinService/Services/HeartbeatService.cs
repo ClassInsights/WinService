@@ -36,7 +36,7 @@ public class HeartbeatService(ILogger<HeartbeatService> logger, IClock clock, IA
                     ComputerId = apiManager.Computer?.ComputerId ?? 0,
                     LastSeen = clock.GetCurrentInstant(),
                     Name = Environment.MachineName,
-                    RoomId = apiManager.Room?.RoomId,
+                    RoomId = apiManager.Computer?.RoomId,
                     MacAddress = GetMacAddress(),
                     IpAddress = GetLocalIpAddress(),
                     LastUser = pipeService.GetLastUser() ?? WindowsIdentity.GetCurrent().Name,

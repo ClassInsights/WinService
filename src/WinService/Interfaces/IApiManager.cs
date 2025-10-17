@@ -11,7 +11,6 @@ public interface IApiManager
     Task<byte[]> GetClientInstallerAsync();
     Task BatchLogs(List<ApiModels.ComputerLog> logs);
     ApiModels.Computer? Computer { get; set; }
-    ApiModels.Room? Room { get; }
     string? ApiUrl { get; }
     string? Token { get; }
 }

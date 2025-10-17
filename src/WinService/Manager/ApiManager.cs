@@ -19,7 +19,6 @@ public class ApiManager: IApiManager
     private readonly Lock _lock = new();
     private readonly ILogger<ApiManager> _logger;
     private readonly IHostApplicationLifetime _appLifetime;
-    public ApiModels.Room? Room { get; private set; }
     public ApiModels.Computer? Computer {get; set; }
 
     public ApiManager(ILogger<ApiManager> logger, IHostApplicationLifetime appLifetime)
@@ -33,57 +32,28 @@ public class ApiManager: IApiManager
             throw new Exception("API url could not be found");
         
         _httpClient.BaseAddress = new Uri($"{ApiUrl}/api/");
-        // start searching for room
-        _ = Task.Run(FindRoomAsync);
+        
+        // start searching for computer
         Computer = Task.Run(GetComputerAsync).GetAwaiter().GetResult();
-    }
-
-    private async Task FindRoomAsync()
-    {
-        try
-        {
-            do
-            {
-                if (await GetRoomAsync(Environment.MachineName) is not { } room)
-                {
-                    await Task.Delay(60 * 1000 * 5); // wait 5 minutes before trying again
-                    continue;
-                }
-                
-                Room = room;
-                _logger.LogInformation("Room: {roomName} with Id {roomId}", room.DisplayName, room.RoomId);
-                if (!room.Enabled)
-                {
-                    _logger.LogInformation("Room: {roomName} is disabled", room.DisplayName);
-                    _appLifetime.StopApplication();
-                }
-                break;
-            } while (Room == null);
-        }
-        catch (HttpRequestException)
-        {
-            _logger.LogCritical("Error while searching for room, stopping service");
-            _appLifetime.StopApplication(); // maybe send user an information via WinClient as this is unexpected?
-        }
     }
     
     private async Task<ApiModels.Computer?> GetComputerAsync()
     {
         try
         {
-            return await GetComputerAsync(Environment.MachineName);
+            var computer = await GetComputerAsync(Environment.MachineName);
+            if (computer != null)
+            {
+                _logger.LogInformation("Hello I am: {Computer}", computer.ComputerId);
+                _logger.LogInformation("My current position is the room with the id: {roomId}", computer.RoomId);
+            }
+            return computer;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            _logger.LogCritical(ex, "Failed to find computer");
             return null;
         }
-    }
-
-    private async Task<ApiModels.Room?> GetRoomAsync(string name)
-    {
-        var response = await CallApiEndpointAsync($"rooms/{name}", HttpMethod.Get);
-        if (!response.IsSuccessStatusCode) return null;
-        return await response.Content.ReadFromJsonAsync(SourceGenerationContext.Default.Room);
     }
 
     private async Task<ApiModels.Computer?> GetComputerAsync(string name)
@@ -95,8 +65,8 @@ public class ApiManager: IApiManager
 
     public async Task<List<ApiModels.Lesson>> GetLessonsAsync(int? room = null)
     {
-        if (room == null && Room == null) return [];
-        var response = await CallApiEndpointAsync($"rooms/{room ?? Room!.RoomId}/lessons", HttpMethod.Get);
+        if (room == null && Computer == null) return [];
+        var response = await CallApiEndpointAsync($"rooms/{room ?? Computer!.RoomId}/lessons", HttpMethod.Get);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync(SourceGenerationContext.Default.ListLesson) ?? [];
     }

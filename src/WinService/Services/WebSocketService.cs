@@ -142,7 +142,7 @@ public class WebSocketService(ILogger<WebSocketService> logger, IHostApplication
                 apiManager.Computer.ComputerId,
                 Name = Environment.MachineName,
                 Type = "Heartbeat",
-                Room = apiManager.Room?.RoomId ?? 0,
+                Room = apiManager.Computer?.RoomId ?? 0,
                 UpTime = DateTime.Now.AddMilliseconds(-1 * Environment.TickCount64),
                 Data = new
                 {
