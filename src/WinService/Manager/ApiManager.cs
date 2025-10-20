@@ -109,7 +109,7 @@ public class ApiManager: IApiManager
 
     private async Task<HttpResponseMessage> CallApiEndpointAsync(string endpoint, HttpMethod method, HttpContent? content = null)
     {
-        for (var i = 0; i < 3; i++)
+        for (var i = 0; i <= 3; i++)
         {
             try
             {
@@ -128,12 +128,13 @@ public class ApiManager: IApiManager
             {
                 if (ex.HttpRequestError == HttpRequestError.ConnectionError)
                 {
-                    _logger.LogCritical("Local API is unavailable");
-                    _appLifetime.StopApplication();
+                    _logger.LogError("Local API is unavailable");
                 }
+
+                await Task.Delay(5000 + 30000 * i);
             }
         }
-        _logger.LogCritical("Credentials are invalid");
+        _logger.LogCritical("Failed to make request to {endpoint} after 4 tries. Are the credentials invalid?", endpoint);
         _appLifetime.StopApplication();
         throw new ApplicationException();
     }
