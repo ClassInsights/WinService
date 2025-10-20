@@ -13,7 +13,7 @@ namespace WinService.Services;
 public class WebSocketService(ILogger<WebSocketService> logger, IHostApplicationLifetime applicationLifetime, IApiManager apiManager, IPipeService pipeService): BackgroundService
 {
     private readonly EnergyManager _energyManager = new();
-    private readonly PeriodicTimer _timer = new(TimeSpan.FromSeconds(1));
+    private PeriodicTimer _timer = new(TimeSpan.FromSeconds(1));
     private ClientWebSocket _webSocket = new();
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -38,9 +38,10 @@ public class WebSocketService(ILogger<WebSocketService> logger, IHostApplication
     private async Task RunAsync(CancellationToken stoppingToken)
     {
         var uri = new Uri(apiManager.ApiUrl ?? string.Empty);
-        if (uri == null)
-            throw new Exception("Invalid API URL");
-
+        var wsTokenSrc = new CancellationTokenSource();
+        var wsToken = wsTokenSrc.Token;
+        var cts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken, wsToken);
+        
         if (uri.Scheme != "https")
         {
             logger.LogCritical("Specified URL is not HTTPS");
@@ -50,23 +51,26 @@ public class WebSocketService(ILogger<WebSocketService> logger, IHostApplication
 
         try
         {
-            await ConnectAsync($"wss://{uri.Authority}/ws/computers", stoppingToken);
+            await ConnectAsync($"wss://{uri.Authority}/ws/computers", cts.Token);
 
             // start listening for commands
-            _ = Task.Run(() => ReadCommandsAsync(stoppingToken), stoppingToken);
+            _ = Task.Run(() => ReadCommandsAsync(cts.Token), cts.Token);
 
             // send heartbeats
-            while (!stoppingToken.IsCancellationRequested && await _timer.WaitForNextTickAsync(stoppingToken))
-                await SendHeartbeatAsync();
+            while (!cts.IsCancellationRequested && await _timer.WaitForNextTickAsync(cts.Token))
+                await SendHeartbeatAsync(cts.Token);
         }
         catch (TaskCanceledException)
         {
-            // ignore
+            // Ignored
         }
         catch (Exception e)
         {
             logger.LogError(e, "{Message}", e.Message);
-            await Task.Delay(5000, stoppingToken);
+            await wsTokenSrc.CancelAsync(); // end all ws actions
+
+            // ReSharper disable PossiblyMistakenUseOfCancellationToken
+            await Task.Delay(15000, stoppingToken);
             await ReconnectAsync(stoppingToken);
         }
     }
@@ -76,6 +80,7 @@ public class WebSocketService(ILogger<WebSocketService> logger, IHostApplication
         logger.LogInformation("Reconnecting to WebSocket ...");
         await CloseWebSocket();
         _webSocket = new ClientWebSocket();
+        _timer =  new PeriodicTimer(TimeSpan.FromSeconds(1));
         await RunAsync(token);
     }
     
@@ -129,7 +134,7 @@ public class WebSocketService(ILogger<WebSocketService> logger, IHostApplication
         }
     }
 
-    private async Task SendHeartbeatAsync()
+    private async Task SendHeartbeatAsync(CancellationToken cancellationToken)
     {
         if (_webSocket.State != WebSocketState.Open || apiManager.Computer == null) return;
 
@@ -153,7 +158,7 @@ public class WebSocketService(ILogger<WebSocketService> logger, IHostApplication
                     DiskUsages = _energyManager.GetDiskUsages()
                 }
             })));
-            await _webSocket.SendAsync(buffer, WebSocketMessageType.Text, true, CancellationToken.None);
+            await _webSocket.SendAsync(buffer, WebSocketMessageType.Text, true, cancellationToken);
         }
         catch (Exception e)
         {
