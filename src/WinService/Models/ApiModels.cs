@@ -4,29 +4,28 @@ using NodaTime.Serialization.SystemTextJson;
 
 namespace WinService.Models;
 
-public class ApiModels // todo: use long instead of int => fix api models
+public class ApiModels
 {
     public class Class
     {
-        public int ClassId { get; set; }
-        public string Name { get; set; } = null!;
-        public string Head { get; set; } = null!;
+        public long ClassId { get; set; }
+        public string? DisplayName { get; set; }
         public string? AzureGroupId { get; set; }
     }
 
     public class Lesson
     {
-        public int LessonId { get; set; }
-        public int RoomId { get; set; }
-        public int SubjectId { get; set; }
-        public int ClassId { get; set; }
+        public long LessonId { get; set; }
+        public long RoomId { get; set; }
+        public long SubjectId { get; set; }
+        public long ClassId { get; set; }
         [JsonConverter(typeof(NodaTimeDefaultJsonConverterFactory))]
         public Instant Start { get; set; }
         [JsonConverter(typeof(NodaTimeDefaultJsonConverterFactory))]
         public Instant End { get; set; }
     }
 
-    public class Computer // yyyy-MM-ddTHH:mm:ss.fffZ
+    public class Computer
     {
         public long? ComputerId { get; set; }
         public long? RoomId { get; set; }
@@ -42,9 +41,10 @@ public class ApiModels // todo: use long instead of int => fix api models
 
     public class Room
     {
-        public int RoomId { get; set; }
+        public long RoomId { get; set; }
         public string DisplayName { get; set; } = null!;
         public bool Enabled { get; set; }
+        public string? OrganizationUnit { get; set; }
     }
     
     public class Settings
